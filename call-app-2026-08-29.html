@@ -1,0 +1,3533 @@
+<!DOCTYPE html>
+<!-- 최종 업데이트: 2026-08-29 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>캐릭터 통화</title>
+<style>
+  :root {
+    --bg-deep: #1e1f22;
+    --bg-rail: #1e1f22;
+    --bg-panel: #2b2d31;
+    --bg-panel2: #313338;
+    --bg-call: #232428;
+    --accent-live: #23a55a;
+    --accent-danger: #f23f42;
+    --accent-mute: #3b3d44;
+    --accent-blurple: #5865f2;
+    --text-main: #f2f3f5;
+    --text-dim: #949ba4;
+    --text-faint: #6d6f78;
+    --ring-speak: #23a55a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg-deep);
+    font-family: 'Segoe UI', 'Noto Sans KR', -apple-system, sans-serif;
+    color: var(--text-main);
+    overflow: hidden;
+  }
+  #app { position: relative; width: 100%; height: 100vh; height: 100svh; display: flex; overflow: hidden; }
+  .screen { display: none; width: 100%; height: 100%; min-height: 0; }
+  .screen.visible { display: flex; }
+  button { font-family: inherit; }
+
+  /* ================= HOME SCREEN ================= */
+  #home { flex-direction: row; min-height: 0; }
+
+  #rail {
+    width: 72px; background: var(--bg-rail); flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0;
+  }
+  .rail-icon-wrap { position: relative; flex-shrink: 0; }
+  .rail-icon-wrap::before {
+    content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+    width: 4px; height: 8px; border-radius: 0 4px 4px 0; background: white;
+    opacity: 0; transition: height 0.15s, opacity 0.15s;
+  }
+  .rail-icon-wrap:hover::before { opacity: 1; height: 20px; }
+  .rail-icon-wrap.railActive::before { opacity: 1; height: 32px; }
+  .rail-tooltip {
+    position: absolute; left: 58px; top: 50%; transform: translateY(-50%) scale(0.9);
+    background: #111214; color: white; font-size: 13px; font-weight: 600; white-space: nowrap;
+    padding: 7px 12px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none; transition: opacity 0.12s, transform 0.12s; z-index: 50;
+  }
+  .rail-icon-wrap:hover .rail-tooltip { opacity: 1; transform: translateY(-50%) scale(1); }
+  .rail-icon {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--bg-panel2);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    color: var(--text-main); cursor: default; transition: border-radius 0.15s, background 0.15s; flex-shrink: 0;
+    border: none;
+  }
+  .rail-icon-wrap:hover .rail-icon { border-radius: 16px; }
+  .rail-icon.active { background: var(--accent-blurple); border-radius: 16px; }
+  .rail-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+  .rail-sep { width: 28px; height: 2px; background: #35363c; border-radius: 1px; margin: 2px 0; flex-shrink: 0; }
+  .rail-icon.addSrv { color: var(--accent-live); cursor: pointer; }
+  .rail-icon-wrap:hover .rail-icon.addSrv { background: var(--accent-live); color: white; }
+
+  /* channel sidebar */
+  #channelSidebar {
+    width: 232px; flex-shrink: 0; background: var(--bg-panel);
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  #serverHeader {
+    height: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px; border-bottom: 1px solid #232428; font-weight: 700; font-size: 15px; cursor: default;
+  }
+  #serverHeader .chev { color: var(--text-dim); font-size: 11px; }
+
+  #channelListScroll { flex: 1; overflow-y: auto; padding: 10px 8px; }
+  .catRow {
+    display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 2px 6px;
+    color: var(--text-dim); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .catRow .addChBtn {
+    background: none; border: none; color: var(--text-dim); font-size: 15px; cursor: pointer; line-height: 1;
+    padding: 0 2px;
+  }
+  .catRow .addChBtn:hover { color: var(--text-main); }
+
+  .chItem {
+    display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 4px;
+    color: var(--text-dim); font-size: 14px; cursor: pointer; margin: 1px 0;
+  }
+  .chItem:hover { background: #35373d; color: var(--text-main); }
+  .chItem.active { background: #3f4147; color: var(--text-main); }
+  .chItem .hash { color: var(--text-faint); font-weight: 600; }
+  .chItem .chIcon { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+
+  .vcItem {
+    display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 4px;
+    cursor: pointer; margin: 1px 0;
+  }
+  .vcItem { }
+  .vcItem:hover { background: #35373d; }
+  .vcItem .vcAvatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: #3b3d44; flex-shrink: 0; }
+  .vcItem .vcName { flex: 1; font-size: 14px; color: var(--text-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .vcItem .vcCallIcon { color: var(--accent-live); flex-shrink: 0; cursor: pointer; padding: 4px; border-radius: 4px; }
+  .vcItem .vcCallIcon:hover { background: var(--accent-live); }
+  .vcItem .vcCallIcon:hover svg { fill: white; }
+  .vcItem .vcCallIcon svg { width: 15px; height: 15px; fill: currentColor; }
+  .vcEmpty { padding: 5px 8px; font-size: 12.5px; color: var(--text-faint); }
+  .vcEmpty a { color: #8ea1e1; cursor: pointer; }
+
+  #userPanel {
+    height: 52px; flex-shrink: 0; background: #232428; display: flex; align-items: center;
+    padding: 0 8px; gap: 8px; position: relative;
+  }
+  #userPanelInfo { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; border-radius: 4px; padding: 4px; margin: -4px; }
+  #userPanelInfo:hover { background: #2e3035; }
+  #userPanel .uAvatar {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    background-size: cover; background-position: center; overflow: hidden;
+  }
+  #userPanel .uName { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #userPanel .uSub { font-size: 11px; color: var(--text-dim); }
+  #userPanel button.gear {
+    background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 17px; padding: 6px;
+    border-radius: 4px; flex-shrink: 0;
+  }
+  #userPanel button.gear:hover { background: #35373d; color: var(--text-main); }
+
+  /* discord-style profile popup card */
+  #profileCard {
+    display: none; position: fixed; width: 260px;
+    background: #232428; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    overflow: hidden; z-index: 100;
+  }
+  #profileCard.visible { display: block; }
+  #profileCardClose {
+    position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); border: none; color: white; cursor: pointer; font-size: 12px; z-index: 2;
+  }
+  #profileCardBanner { height: 60px; background: linear-gradient(135deg, #5865f2, #949cf2); }
+  #profileCardAvatarWrap {
+    width: 72px; height: 72px; border-radius: 50%; border: 5px solid #232428; background: var(--accent-blurple);
+    margin: -40px 0 0 14px; position: relative; overflow: hidden;
+  }
+  #profileCardAvatarWrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  #profileCardAvatarFallback {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 22px;
+  }
+  #profileCardBody { padding: 12px 14px 14px; }
+  #profileCardName { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  #profileCardSub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; margin-bottom: 12px; line-height: 1.4; }
+  .profileCardBtn {
+    width: 100%; background: #4e5058; color: white; border: none; border-radius: 6px;
+    padding: 9px 0; font-size: 13.5px; font-weight: 600; cursor: pointer; margin-bottom: 8px;
+  }
+  .profileCardBtn:hover { background: #5c5e66; }
+  .profileCardBtn.primary { background: var(--accent-live); }
+  .profileCardBtn.primary:hover { filter: brightness(1.08); }
+  .profileCardRow {
+    display: flex; align-items: center; justify-content: space-between; padding: 9px 0;
+    border-top: 1px solid #3a3c42; font-size: 13.5px; color: var(--text-main); cursor: pointer;
+  }
+  .profileCardRow:hover { color: #dbdee1; }
+  .profileCardRow .chev { color: var(--text-faint); }
+
+  /* chat main */
+  #chatMain { flex: 1; display: flex; flex-direction: column; background: var(--bg-panel2); min-width: 0; min-height: 0; }
+  #chatTopbar {
+    height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; border-bottom: 1px solid #232428; font-weight: 600; font-size: 15px;
+  }
+  #chatTopbar .hash { color: var(--text-faint); }
+  #chatChannelIcon { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+  #dmHeaderAvatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--accent-blurple); }
+  #chatParticipants { display: flex; align-items: center; margin-left: 4px; }
+  #chatParticipants img {
+    width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #3b3d44;
+    border: 2px solid var(--bg-panel2); margin-left: -6px;
+  }
+  #chatTopbarActions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+  #chatTopbarActions button {
+    background: #383a40; color: var(--text-dim); border: none; border-radius: 14px;
+    padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  #chatTopbarActions button:hover { background: #45474e; color: var(--text-main); }
+  #chatCharMenu {
+    display: none; position: fixed; width: 220px; max-height: 260px; overflow-y: auto;
+    background: #232428; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 100; padding: 6px;
+  }
+  #chatCharMenu.visible { display: block; }
+
+  #chatFeed { flex: 1; overflow-y: auto; padding: 14px 16px 6px; }
+  .msgRow { display: flex; gap: 12px; padding: 6px 4px; }
+  .msgRow .mAvatar {
+    width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--bg-panel);
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .msgRow .mAvatar.self { background: var(--accent-blurple); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+  .msgRow .mBody { min-width: 0; }
+  .msgRow .mHead { display: flex; align-items: baseline; gap: 8px; }
+  .msgRow .mName { font-size: 14.5px; font-weight: 600; }
+  .msgRow .mTime { font-size: 11px; color: var(--text-faint); }
+  .msgRow .mText { font-size: 14.5px; color: #dbdee1; line-height: 1.45; margin-top: 1px; word-break: break-word; }
+  .msgRow .mTranslation { font-size: 12.5px; color: var(--text-dim); font-style: italic; margin-top: 3px; line-height: 1.4; }
+
+  #chatEmptyHint { color: var(--text-dim); font-size: 13px; text-align: center; margin: 30px 0; }
+
+  #chatInputWrap { padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); flex-shrink: 0; }
+  #dmInputWrap { padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px)); flex-shrink: 0; }
+  #chatInputBar, .chatInputBarStyle {
+    background: #383a40; border-radius: 8px; display: flex; align-items: center; padding: 0 12px;
+  }
+  #chatInputBar input, .chatInputBarStyle input {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text-main);
+    padding: 11px 8px; font-size: 14.5px; font-family: inherit;
+  }
+  #chatInputBar input::placeholder, .chatInputBarStyle input::placeholder { color: var(--text-faint); }
+  #chatSendBtn, #dmSendBtn {
+    background: var(--accent-blurple); border: none; color: white; border-radius: 50%;
+    width: 32px; height: 32px; min-width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; margin-left: 4px; transform: rotate(0deg); transition: filter 0.12s, transform 0.08s;
+  }
+  #chatSendBtn:hover, #dmSendBtn:hover { filter: brightness(1.1); }
+  #chatSendBtn:active, #dmSendBtn:active { transform: scale(0.9); }
+
+  #dmFeed { flex: 1; overflow-y: auto; padding: 14px 16px 6px; }
+
+  #dmCallBtn {
+    background: #383a40; border: none; color: var(--text-dim); border-radius: 14px;
+    padding: 5px 11px; font-size: 13px; cursor: pointer; margin-left: auto;
+  }
+  #dmCallBtn:hover { background: #45474e; color: var(--text-main); }
+
+  #friendsView { flex: 1; overflow-y: auto; padding: 18px 20px; }
+  #friendsHeaderRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #3a3c42; padding-bottom: 10px; gap: 10px; }
+  #friendsCount { font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0; }
+  #friendsHeaderBtns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  #friendsHeaderBtns button {
+    background: #383a40; color: var(--text-dim); border: none; border-radius: 14px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  #friendsHeaderBtns button:hover { background: #45474e; color: var(--text-main); }
+  #friendsAddBtn {
+    background: var(--accent-live) !important; color: white !important;
+  }
+  #friendsAddBtn:hover { filter: brightness(1.08); }
+  .friendRowWrap { position: relative; overflow: hidden; border-top: 1px solid #35373d; }
+  .friendRowWrap:first-of-type { border-top: none; }
+  .friendSwipeActions {
+    position: absolute; top: 0; right: 0; bottom: 0; display: flex;
+  }
+  .swipeActionBtn {
+    width: 60px; height: 100%; border: none; background: #4b4f58; color: white;
+    font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .swipeActionBtn.danger { background: var(--accent-danger); }
+  .friendRow {
+    display: flex; align-items: center; gap: 12px; padding: 10px 8px;
+    border-radius: 6px; transition: background 0.12s, transform 0.2s ease;
+    background: var(--bg-panel2); position: relative; touch-action: pan-y;
+  }
+  .friendRow:hover { background: #2f3136; }
+  .friendAvatarWrap { position: relative; flex-shrink: 0; transition: transform 0.12s; }
+  .friendAvatarWrap:hover { transform: scale(1.06); }
+  .friendAvatarWrap:active { transform: scale(0.96); opacity: 0.85; }
+  .friendAvatarWrap img, .friendAvatarWrap .friendInitial {
+    width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;
+  }
+  .friendStatusDot {
+    position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent-live); border: 3px solid var(--bg-panel2);
+  }
+  .friendMeta { flex: 1; min-width: 0; border-radius: 4px; transition: background 0.12s; padding: 2px 4px; margin: -2px -4px; }
+  .friendMeta:hover { background: rgba(255,255,255,0.04); }
+  .friendMeta:active { background: rgba(255,255,255,0.08); }
+  .friendName { font-size: 15px; font-weight: 600; }
+  .friendSub { font-size: 12px; color: var(--text-dim); }
+  .friendActionBtn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; background: #2b2d31;
+    color: var(--text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 8px;
+    transition: background 0.12s, color 0.12s, transform 0.08s;
+  }
+  .friendActionBtn:hover { background: var(--accent-blurple); color: white; }
+  .friendActionBtn:active { transform: scale(0.9); }
+  #friendsEmpty { color: var(--text-dim); font-size: 13.5px; text-align: center; padding: 40px 20px; }
+
+  /* member panel (right side) */
+  #memberPanel {
+    width: 232px; flex-shrink: 0; background: var(--bg-panel2); border-left: 1px solid #232428;
+    padding: 16px 10px; overflow-y: auto;
+  }
+  .memGroupLabel {
+    font-size: 12px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.3px;
+    padding: 0 6px; margin: 10px 0 6px;
+  }
+  .memGroupLabel:first-child { margin-top: 0; }
+  .memRow {
+    display: flex; align-items: center; gap: 10px; padding: 6px 6px; border-radius: 4px; cursor: default;
+  }
+  .memRow:hover { background: #35373d; }
+  .memRow.offline { opacity: 0.5; }
+  .memAvatarWrap { position: relative; flex-shrink: 0; }
+  .memAvatarWrap img, .memAvatarWrap .memInitial {
+    width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  }
+  .memStatusDot {
+    position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%;
+    border: 3px solid var(--bg-panel2);
+  }
+  .memStatusDot.on { background: var(--accent-live); }
+  .memStatusDot.off { background: #80848e; }
+  .memName { font-size: 14px; color: var(--text-dim); }
+  .memRow:not(.offline) .memName { color: #dbdee1; }
+  .memEmpty { padding: 0 6px; font-size: 12.5px; color: var(--text-faint); }
+
+  /* ================= SETTINGS SCREEN ================= */
+  #settings {
+    flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 56px 24px 40px; gap: 14px; background: var(--bg-deep);
+    overflow-y: auto;
+  }
+  #settingsBack {
+    position: absolute; top: 18px; left: 18px; background: none; border: none;
+    color: var(--text-dim); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  }
+  #settingsBack:hover { color: var(--text-main); }
+  #settings h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.2px; }
+  #settings p.sub { color: var(--text-dim); font-size: 13px; margin: 0 0 12px; text-align: center; }
+  .field { width: 100%; max-width: 360px; }
+  .field label {
+    display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.4px;
+  }
+  #aiProviderToggle { display: flex; gap: 8px; }
+  .aiProviderBtn {
+    flex: 1; background: var(--bg-panel); border: 1px solid #1e1f22; border-radius: 6px;
+    color: var(--text-dim); padding: 9px 0; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  .aiProviderBtn.selected { background: var(--accent-blurple); color: white; border-color: var(--accent-blurple); }
+  .field input, .field textarea {
+    width: 100%; background: var(--bg-panel); border: 1px solid #1e1f22; border-radius: 6px;
+    color: var(--text-main); padding: 9px 10px; font-size: 14px; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 54px; }
+  .field input:focus, .field textarea:focus { outline: 2px solid #5865f2; }
+  #voiceListRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  #loadVoicesBtn {
+    background: #383a40; color: var(--text-dim); border: none; border-radius: 14px;
+    padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  #loadVoicesBtn:hover { background: #45474e; color: var(--text-main); }
+  #loadVoicesBtn:disabled { opacity: 0.6; cursor: default; }
+  #voiceListStatus { font-size: 11px; color: var(--text-faint); }
+  #elevenVoiceSelect {
+    width: 100%; background: var(--bg-panel); border: 1px solid #1e1f22; border-radius: 6px;
+    color: var(--text-main); padding: 9px 10px; font-size: 14px; font-family: inherit; margin-top: 6px;
+  }
+  #avatarPreviewWrap {
+    width: 84px; height: 84px; border-radius: 50%; overflow: hidden;
+    background: var(--bg-panel); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px; border: 2px solid #1e1f22;
+  }
+  #avatarPreviewWrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  #avatarPreviewWrap span { color: var(--text-dim); font-size: 11px; }
+  #bannerPreviewWrap {
+    width: 100%; height: 54px; border-radius: 6px; overflow: hidden; margin-top: 6px;
+    background: linear-gradient(135deg, #5865f2, #949cf2); display: none;
+  }
+  #bannerPreviewWrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  #saveSettingsBtn {
+    margin-top: 10px; background: var(--accent-live); color: white; border: none;
+    padding: 11px 28px; border-radius: 24px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: filter 0.15s;
+  }
+  #saveSettingsBtn:hover { filter: brightness(1.08); }
+  #appVersionLabel { margin-top: 16px; font-size: 11px; color: var(--text-faint); text-align: center; }
+
+  /* ================= CALL SCREEN ================= */
+  #callScreen { flex-direction: column; background: var(--bg-call); }
+  #callTopbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 14px 18px; color: var(--text-main); font-size: 15px; font-weight: 700; letter-spacing: 0.2px;
+  }
+  #callTopbar .dmTitle { display: flex; align-items: center; gap: 6px; }
+  #callTopbar .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent-live);
+    animation: dotpulse 1.6s ease-in-out infinite;
+  }
+  #callTopbar .topIcons { display: flex; align-items: center; gap: 14px; color: var(--text-dim); font-size: 15px; }
+  @keyframes dotpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  #callMain {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; position: relative;
+  }
+  #avatarDuo { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  #roomGrid {
+    display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px; width: 100%; max-width: 640px; padding: 0 20px;
+  }
+  #roomInviteBar { display: none; gap: 10px; margin-top: 4px; }
+  #roomInviteBar button {
+    background: #2b2d31; color: var(--text-main); border: 1px solid #40424a; border-radius: 8px;
+    padding: 10px 18px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  #roomInviteBar button:hover { background: #35373d; }
+  #inviteMenu {
+    display: none; position: fixed; width: 220px; max-height: 260px; overflow-y: auto;
+    background: #232428; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 100; padding: 6px;
+  }
+  #inviteMenu.visible { display: block; }
+  .inviteMenuItem {
+    display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13.5px;
+  }
+  .inviteMenuItem:hover { background: #35373d; }
+  .inviteMenuItem img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #3b3d44; }
+  .inviteMenuEmpty { padding: 10px 8px; font-size: 12.5px; color: var(--text-faint); text-align: center; }
+
+  #onboardingModal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    align-items: center; justify-content: center; z-index: 500;
+  }
+  #onboardingModal.visible { display: flex; }
+  #onboardingBox {
+    width: 380px; max-width: 90vw; background: #2b2d31; border-radius: 12px;
+    padding: 28px 26px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  #onboardingIcon {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 14px;
+  }
+  #onboardingBox h2 { font-size: 17px; margin: 0 0 12px; color: var(--text-main); }
+  #onboardingText { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin: 0 0 18px; }
+  #onboardingBtns { display: flex; flex-direction: column; gap: 8px; }
+  #onboardingBtns button {
+    border: none; border-radius: 20px; padding: 10px 0; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  #onboardingSetupBtn { background: var(--accent-live); color: white; }
+  #onboardingSetupBtn:hover { filter: brightness(1.08); }
+  #onboardingLaterBtn { background: #383a40; color: var(--text-dim); }
+  #onboardingLaterBtn:hover { background: #45474e; color: var(--text-main); }
+  #onboardingHint { font-size: 11px; color: var(--text-faint); margin: 14px 0 0; }
+
+  #loadingModal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    align-items: center; justify-content: center; z-index: 600;
+  }
+  #loadingModal.visible { display: flex; }
+  #loadingBox {
+    background: #2b2d31; border-radius: 12px; padding: 30px 36px;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5); max-width: 320px; text-align: center;
+  }
+  #loadingSpinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid #45474e; border-top-color: var(--accent-live);
+    animation: loadingSpin 0.8s linear infinite;
+  }
+  @keyframes loadingSpin { to { transform: rotate(360deg); } }
+  #loadingText { font-size: 14px; font-weight: 600; color: var(--text-main); }
+  #loadingSubText { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  #charContextMenu {
+    display: none; position: fixed; width: 170px;
+    background: #232428; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 200; padding: 6px;
+  }
+  #charContextMenu.visible { display: block; }
+  .ctxMenuItem {
+    display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 6px; cursor: pointer; font-size: 13.5px;
+    color: var(--text-main);
+  }
+  .ctxMenuItem:hover { background: #35373d; }
+  .ctxMenuItem.danger { color: #fca5a5; }
+  .ctxMenuItem.danger:hover { background: var(--accent-danger); color: white; }
+  .ctxMenuSep { height: 1px; background: #3a3c42; margin: 4px 2px; }
+
+  #langMenu {
+    display: none; position: fixed; width: 190px; max-height: 300px; overflow-y: auto;
+    background: #232428; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 200; padding: 6px;
+  }
+  #langMenu.visible { display: block; }
+  .langMenuLabel { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; padding: 6px 9px 4px; letter-spacing: 0.4px; }
+  .langMenuItem {
+    display: flex; align-items: center; justify-content: space-between; padding: 8px 9px; border-radius: 6px;
+    cursor: pointer; font-size: 13.5px; color: var(--text-main);
+  }
+  .langMenuItem:hover { background: #35373d; }
+  .langMenuItem.selected { color: var(--accent-live); font-weight: 700; }
+  #langBtn.active { color: var(--accent-live); }
+
+  #volumeMenu {
+    display: none; position: fixed; width: 170px; background: #232428; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 200; padding: 14px 14px 10px;
+    align-items: center; gap: 10px; flex-direction: column;
+  }
+  #volumeMenu.visible { display: flex; }
+  #volumeSlider { width: 100%; accent-color: var(--accent-live); cursor: pointer; }
+  #volumeValueLabel { font-size: 12px; color: var(--text-dim); }
+
+  .roomTile {
+    position: relative; aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #4b4f58, #2b2d31);
+    box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s;
+  }
+  .roomTile.g1 { background: linear-gradient(135deg, #5865f2, #2f3384); }
+  .roomTile.g2 { background: linear-gradient(135deg, #eb459e, #6b1d4f); }
+  .roomTile.g3 { background: linear-gradient(135deg, #23a55a, #12532e); }
+  .roomTile.g4 { background: linear-gradient(135deg, #f0b232, #7a5713); }
+  .roomTile.g5 { background: linear-gradient(135deg, #949cf2, #3b3f7a); }
+  .roomTile.speaking { box-shadow: 0 0 0 3px var(--accent-live); }
+  .roomTile.selected::after {
+    content: ""; position: absolute; inset: 0; border-radius: 8px; border: 2px solid var(--accent-blurple); pointer-events: none;
+  }
+  .roomTile .tileAvatarWrap {
+    width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; background: rgba(0,0,0,0.2); flex-shrink: 0;
+  }
+  .roomTile img { width: 100%; height: 100%; object-fit: cover; }
+  .roomTile .tileSelf {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 700; color: white;
+  }
+  .roomTile .tileNameBadge {
+    position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,0.55); color: white;
+    font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 4px; max-width: calc(100% - 16px);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #roomEmptyHint { color: var(--text-dim); font-size: 13px; text-align: center; max-width: 260px; grid-column: 1 / -1; }
+
+  .roomItem {
+    display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 4px;
+    color: var(--text-dim); font-size: 14px; cursor: pointer; margin: 1px 0;
+  }
+  .roomItem:hover { background: #35373d; color: var(--text-main); }
+  .roomItem.roomItemActive { color: var(--text-main); background: #35373d; }
+
+  .roomMemberRow {
+    display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 22px; margin: 0 0 1px;
+    border-radius: 4px; cursor: pointer;
+  }
+  .roomMemberRow:hover { background: #35373d; }
+  .roomMemberRow img, .roomMemberRow .rmInitial {
+    width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .roomMemberRow .rmName { font-size: 13px; color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .roomInviteLinkRow {
+    display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 22px; margin: 1px 0 4px;
+    border-radius: 4px; cursor: pointer; font-size: 12.5px; color: var(--text-faint);
+  }
+  .roomInviteLinkRow:hover { background: #35373d; color: var(--text-dim); }
+  .roomInviteLinkRow .chev { margin-left: auto; }
+
+  #voiceConnectedBar {
+    display: none; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; margin: 0 8px 6px; background: #2b2d31; border-radius: 6px; cursor: pointer;
+  }
+  #voiceConnectedInfo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  #voiceConnectedInfo .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent-live); flex-shrink: 0;
+    animation: dotpulse 1.6s ease-in-out infinite;
+  }
+  #voiceConnectedRoomName { font-size: 12.5px; font-weight: 700; color: var(--accent-live); }
+  #voiceConnectedSub { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #voiceConnectedLeaveBtn {
+    background: var(--accent-danger); border: none; border-radius: 6px; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  }
+  #voiceConnectedLeaveBtn svg { width: 15px; height: 15px; fill: white; }
+
+  #chatMainCallSlot { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  #chatMainCallSlot #callScreen.embedded {
+    position: relative; width: 100%; height: 100%; inset: auto;
+  }
+
+  .selfAvatar {
+    width: 108px; height: 108px; border-radius: 50%; background: var(--accent-blurple);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    background-size: cover; background-position: center; position: relative;
+  }
+  .selfAvatar::before {
+    content: ""; position: absolute; inset: -9px; border-radius: 50%;
+    border: 3px solid var(--accent-live); opacity: 0; transform: scale(0.9);
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .selfAvatar.speaking::before { opacity: 1; animation: ringpulse 1.1s ease-out infinite; }
+  .selfAvatar svg { width: 42px; height: 42px; fill: white; opacity: 0.9; }
+  #avatarRing {
+    width: 128px; height: 128px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; flex-shrink: 0;
+  }
+  #avatarRing::before {
+    content: ""; position: absolute; inset: -9px; border-radius: 50%;
+    border: 3px solid var(--ring-speak); opacity: 0; transform: scale(0.9);
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  #avatarRing.speaking::before {
+    opacity: 1; animation: ringpulse 1.1s ease-out infinite;
+  }
+  @keyframes ringpulse {
+    0% { transform: scale(0.94); opacity: 0.9; }
+    100% { transform: scale(1.22); opacity: 0; }
+  }
+  #avatarImg {
+    width: 108px; height: 108px; border-radius: 50%; object-fit: cover;
+    background: var(--bg-panel); border: 3px solid var(--bg-call);
+  }
+  #charNameCall { font-size: 16px; font-weight: 600; color: var(--text-dim); }
+  #callStatus { font-size: 13px; color: var(--text-dim); min-height: 18px; text-align: center; }
+  #callTimer { font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  #captionBox {
+    max-width: 380px; min-height: 20px; text-align: center; font-size: 14px;
+    color: var(--text-main); line-height: 1.5; padding: 0 16px;
+  }
+  #captionTranslation {
+    max-width: 380px; text-align: center; font-size: 12.5px; color: var(--text-dim);
+    line-height: 1.4; padding: 2px 16px 0; font-style: italic;
+  }
+
+  #controlBar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 10px 14px; margin: 22px 0 calc(30px + env(safe-area-inset-bottom, 0px)); background: #1a1b1e; border-radius: 12px;
+  }
+  .ctl {
+    width: 40px; height: 40px; border-radius: 8px; border: none; cursor: pointer;
+    background: transparent; color: var(--text-dim); font-size: 17px;
+    display: flex; align-items: center; justify-content: center; transition: filter 0.15s, background 0.15s;
+  }
+  .ctl:hover { background: #2b2d31; color: var(--text-main); }
+  .ctl.active { background: var(--accent-live); color: white; }
+  .ctl svg { width: 19px; height: 19px; fill: currentColor; }
+  #hangupBtn {
+    background: var(--accent-danger); color: white; border: none; cursor: pointer;
+    padding: 0 16px; height: 40px; border-radius: 8px; font-size: 13.5px; font-weight: 700;
+  }
+  #hangupBtn:hover { filter: brightness(1.08); }
+
+  #micHint { font-size: 11px; color: var(--text-dim); text-align: center; padding-bottom: 6px; }
+
+  #textFallback {
+    display: none; position: absolute; bottom: 108px; left: 50%; transform: translateX(-50%);
+    width: 320px; gap: 8px; flex-direction: row;
+  }
+  #textFallback input {
+    flex: 1; background: var(--bg-panel); border: 1px solid #1e1f22; border-radius: 20px;
+    color: var(--text-main); padding: 9px 14px; font-size: 13px;
+  }
+  #textFallback button {
+    background: #5865f2; border: none; color: white; border-radius: 20px; padding: 0 14px; cursor: pointer;
+  }
+
+  ::selection { background: #5865f2; }
+
+  /* ---------------- mobile responsive ---------------- */
+  #mobileMenuBtn, #mobileMembersBtn {
+    display: none; background: none; border: none; color: var(--text-main);
+    font-size: 18px; padding: 4px 8px; cursor: pointer; flex-shrink: 0;
+  }
+  #sidebarBackdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 250;
+  }
+  #sidebarBackdrop.visible { display: block; }
+
+  @media (max-width: 768px) {
+    #rail { display: none; }
+    #mobileMenuBtn, #mobileMembersBtn { display: flex; align-items: center; justify-content: center; }
+    .friendActionBtn[data-friend-edit] { display: none; }
+
+    #channelSidebar {
+      position: fixed; top: 0; left: 0; height: 100%; width: 78vw; max-width: 300px;
+      z-index: 260; transform: translateX(-100%); transition: transform 0.22s ease;
+    }
+    #channelSidebar.mobileOpen { transform: translateX(0); }
+
+    #memberPanel {
+      position: fixed; top: 0; right: 0; height: 100%; width: 78vw; max-width: 300px;
+      z-index: 260; transform: translateX(100%); transition: transform 0.22s ease;
+    }
+    #memberPanel.mobileOpen { transform: translateX(0); }
+
+    #chatParticipants { display: none !important; }
+    #chatTopbarActions { flex-wrap: wrap; gap: 6px; }
+    #chatTopbarActions button { font-size: 11px; padding: 5px 8px; }
+    #friendsHeaderRow { flex-direction: column; align-items: flex-start; gap: 10px; }
+    #friendsHeaderBtns { flex-wrap: wrap; justify-content: flex-start; }
+
+    #controlBar { flex-wrap: wrap; max-width: 92vw; gap: 6px; padding: 8px; }
+    .ctl { width: 36px; height: 36px; }
+    #callMain { padding: 0 12px; }
+    #avatarDuo { gap: 10px; }
+    .selfAvatar { width: 84px; height: 84px; }
+    #avatarRing { width: 100px; height: 100px; }
+    #avatarImg { width: 84px; height: 84px; }
+    #roomGrid { max-width: 100%; padding: 0 12px; }
+
+    #settings { padding: 56px 16px 40px; }
+    .field { max-width: 100%; }
+
+    #profileCard, #charContextMenu, #inviteMenu, #chatCharMenu, #langMenu, #volumeMenu {
+      max-width: 88vw;
+    }
+    #onboardingBox, #loadingBox { width: 88vw; }
+
+    #dmHeaderAvatar, #chatChannelIcon { width: 20px; height: 20px; }
+    #roomInviteBar { flex-wrap: wrap; justify-content: center; max-width: 92vw; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= HOME ================= -->
+  <div id="home" class="screen visible">
+    <div id="sidebarBackdrop"></div>
+    <div id="rail">
+      <div class="rail-icon-wrap railActive">
+        <div class="rail-icon active" data-original-content="💬">💬</div>
+        <div class="rail-tooltip">친구 목록</div>
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-icon-wrap">
+        <div class="rail-icon addSrv">＋</div>
+        <div class="rail-tooltip">서버 추가</div>
+      </div>
+    </div>
+
+    <div id="channelSidebar">
+      <div id="serverHeader"><span>캐릭터 통화</span><span class="chev">▾</span></div>
+      <div id="channelListScroll">
+        <div class="vcItem" id="sidebarFriendsNav">
+          <span style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">👥</span>
+          <span class="vcName">친구</span>
+        </div>
+        <div class="catRow" style="margin-top:10px;">
+          <span id="textCatLabel">텍스트 채널</span>
+          <button class="addChBtn" id="addChannelBtn" title="채널 추가">＋</button>
+        </div>
+        <div id="textChannelList"></div>
+
+        <div class="catRow" style="margin-top:14px;">
+          <span>음성 채널</span>
+          <button class="addChBtn" id="addRoomBtn" title="음성 채널 추가">＋</button>
+        </div>
+        <div id="roomChannelList"></div>
+      </div>
+      <div id="voiceChannelList" style="display:none;"></div>
+      <div id="voiceConnectedBar">
+        <div id="voiceConnectedInfo">
+          <span class="dot"></span>
+          <div>
+            <div id="voiceConnectedRoomName">음성 연결됨</div>
+            <div id="voiceConnectedSub">일반 / 캐릭터 통화</div>
+          </div>
+        </div>
+        <button id="voiceConnectedLeaveBtn" title="연결 끊기">
+          <svg viewBox="0 0 24 24"><path d="M12 9c-2.5 0-4.9.5-7 1.5v3.6c0 .5.3.9.7 1.1 1 .5 2.1.9 3.3 1.1.4.1.8-.1 1-.4l1.2-1.6c.2-.3.6-.4.9-.3 1 .3 2 .5 2.9.5s1.9-.2 2.9-.5c.3-.1.7 0 .9.3l1.2 1.6c.2.3.6.5 1 .4 1.2-.2 2.3-.6 3.3-1.1.4-.2.7-.6.7-1.1v-3.6C16.9 9.5 14.5 9 12 9z" transform="rotate(135 12 12)"/></svg>
+        </button>
+      </div>
+      <div id="userPanel">
+        <div id="userPanelInfo" title="내 프로필 보기">
+          <div class="uAvatar" id="myAvatarBtn"></div>
+          <div style="min-width:0;">
+            <div class="uName" id="myNameLabel">나</div>
+            <div class="uSub" id="myStatusLabel">온라인</div>
+          </div>
+        </div>
+        <button class="gear" id="langBtn" title="캐릭터 응답 언어: 한국어">🌐</button>
+        <button class="gear" id="goSettingsBtn" title="설정">⚙</button>
+      </div>
+
+      <div id="langMenu"></div>
+
+      <div id="profileCard">
+        <button id="profileCardClose" title="닫기">✕</button>
+        <div id="profileCardBanner"></div>
+        <div id="profileCardAvatarWrap"><img id="profileCardAvatar" src=""><div id="profileCardAvatarFallback"></div></div>
+        <div id="profileCardBody">
+          <div id="profileCardName"></div>
+          <div id="profileCardSub"></div>
+          <div id="profileCardActions"></div>
+        </div>
+      </div>
+
+      <div id="charContextMenu"></div>
+    </div>
+
+    <div id="chatMain">
+      <div id="chatTopbar">
+        <button id="mobileMenuBtn" title="채널 목록 열기">☰</button>
+        <img id="chatChannelIcon" style="display:none;"><span class="hash" id="chatHashSymbol">#</span><img id="dmHeaderAvatar" style="display:none;"><span id="chatChannelTitle">일반</span>
+        <div id="chatParticipants"></div>
+        <div id="chatTopbarActions">
+          <button id="chatAddCharBtn" title="이 채널에 캐릭터 추가">＋ 캐릭터</button>
+          <button id="chatAutoTalkBtn" title="캐릭터끼리 대화 시작">🔄 자동 대화</button>
+        </div>
+        <button id="dmCallBtn" title="전화 걸기" style="display:none;">📞</button>
+        <button id="mobileMembersBtn" title="멤버 목록">👥</button>
+      </div>
+      <div id="chatFeed"></div>
+      <div id="chatInputWrap">
+        <div id="chatInputBar">
+          <input type="text" id="chatInput" placeholder="메시지 보내기">
+          <button id="chatSendBtn" title="보내기">➤</button>
+        </div>
+      </div>
+
+      <div id="dmFeed" style="display:none;"></div>
+      <div id="dmInputWrap" style="display:none;">
+        <div class="chatInputBarStyle">
+          <input type="text" id="dmInput" placeholder="메시지 보내기">
+          <button id="dmSendBtn" title="보내기">➤</button>
+        </div>
+      </div>
+
+      <div id="friendsView" style="display:none;"></div>
+      <input type="file" id="loadSettingsInput" accept="application/json,.json" style="display:none;">
+      <input type="file" id="importSheetInput" accept=".md,.txt,text/plain,text/markdown" style="display:none;">
+      <input type="file" id="channelImageInput" accept="image/*" style="display:none;">
+      <input type="file" id="serverImageInput" accept="image/*" style="display:none;">
+
+      <div id="chatMainCallSlot"></div>
+    </div>
+
+    <div id="chatCharMenu"></div>
+
+    <div id="memberPanel"></div>
+  </div>
+
+  <!-- ================= SETTINGS ================= -->
+  <div id="settings" class="screen" style="position:relative;">
+    <button id="settingsBack">← 뒤로</button>
+    <div id="avatarPreviewWrap"><span>사진</span><img id="avatarPreviewImg"></div>
+    <h1 id="settingsTitle">캐릭터 설정</h1>
+    <p class="sub" id="settingsSub">이미지, 성격, 목소리를 채우면 친구 목록에 나타나요</p>
+
+    <div class="field">
+      <label id="imgFieldLabel">캐릭터 이미지</label>
+      <input type="file" id="imgInput" accept="image/*">
+    </div>
+    <div class="field">
+      <label id="bannerFieldLabel">배너 이미지 (선택)</label>
+      <input type="file" id="bannerInput" accept="image/*">
+      <div id="bannerPreviewWrap"><img id="bannerPreviewImg"></div>
+    </div>
+    <div class="field">
+      <label id="nameFieldLabel">캐릭터 이름</label>
+      <input type="text" id="charNameInput" placeholder="예: 리안" value="리안">
+    </div>
+    <div class="field charExtraField">
+      <label>상태 메시지 (친구 목록에 표시될 한마디, 선택)</label>
+      <input type="text" id="statusMsgInput" placeholder="예: 야호~ 오늘 날씨 좋다!" maxlength="60">
+    </div>
+    <div class="field charExtraField">
+      <label>성별 (선택)</label>
+      <input type="text" id="genderInput" placeholder="예: 여성, 남성, 논바이너리 등">
+    </div>
+    <div class="field" id="anthropicKeyField" style="display:none;">
+      <label>대사 생성에 쓸 AI</label>
+      <div id="aiProviderToggle">
+        <button type="button" class="aiProviderBtn" id="providerClaudeBtn">Claude</button>
+        <button type="button" class="aiProviderBtn" id="providerGeminiBtn">Gemini</button>
+      </div>
+      <div id="anthropicKeySub">
+        <label style="margin-top:10px;">Anthropic API 키 (필수 — 캐릭터 대사 생성에 사용)</label>
+        <input type="password" id="anthropicKeyInput" placeholder="sk-ant-...">
+        <p style="font-size:11px;color:var(--text-dim);margin:4px 2px 0;">console.anthropic.com에서 발급 · 이 파일을 브라우저로 직접 열어서 쓸 때만 필요해요 · 키는 저장되지 않고 이 탭에서만 쓰여요</p>
+      </div>
+      <div id="geminiKeySub" style="display:none;">
+        <label style="margin-top:10px;">Gemini API 키 (필수 — 캐릭터 대사 생성에 사용)</label>
+        <input type="password" id="geminiKeyInput" placeholder="AIza...">
+        <p style="font-size:11px;color:var(--text-dim);margin:4px 2px 0;">aistudio.google.com/apikey 에서 무료로 발급 · 키는 저장되지 않고 이 탭에서만 쓰여요</p>
+      </div>
+    </div>
+    <div class="field" id="personaField">
+      <label>캐릭터 설정 / 성격 (짧게)</label>
+      <textarea id="personaInput" placeholder="예: 다정하고 장난기 있는 여행 동료. 반말로 대화함.">다정하고 장난기 있는 여행 동료. 반말로, 짧고 자연스럽게 대화함.</textarea>
+    </div>
+    <div class="field charExtraField">
+      <label>나를 부르는 호칭 (선택)</label>
+      <input type="text" id="callNameInput" placeholder="예: 오빠, 자기야, OO씨, 너">
+    </div>
+    <div class="field charExtraField">
+      <label>말버릇 / 말투 특징 (선택)</label>
+      <input type="text" id="speechHabitInput" placeholder="예: 문장 끝에 ~냥 붙임, 영어 살짝 섞어씀">
+    </div>
+    <div class="field charExtraField">
+      <label>좋아하는 것 (선택)</label>
+      <input type="text" id="likesInput" placeholder="예: 커피, 고양이, 밤바다 산책">
+    </div>
+    <div class="field charExtraField">
+      <label>배경 이야기 / 나와의 관계 (선택)</label>
+      <textarea id="backstoryInput" placeholder="예: 어릴 때부터 알고 지낸 소꿉친구. 지금은 다른 도시에 살고 있어서 자주 통화함."></textarea>
+    </div>
+    <div class="field" id="elevenKeyField">
+      <label id="elevenKeyLabel">ElevenLabs API 키 (선택 — 없으면 브라우저 기본 음성 사용)</label>
+      <input type="password" id="elevenKeyInput" placeholder="sk_...">
+    </div>
+    <div class="field" id="elevenVoiceField">
+      <label id="elevenVoiceLabel">ElevenLabs Voice ID (선택)</label>
+      <input type="text" id="elevenVoiceInput" placeholder="예: 21m00Tcm4TlvDq8ikWAM">
+      <div id="voiceListRow">
+        <button type="button" id="loadVoicesBtn">🔊 내 목소리 목록 불러오기</button>
+        <span id="voiceListStatus"></span>
+      </div>
+      <select id="elevenVoiceSelect" style="display:none;"></select>
+    </div>
+
+    <button id="saveSettingsBtn">저장하고 나가기</button>
+    <div id="appVersionLabel">최종 업데이트: 2026.08.29</div>
+  </div>
+
+  <!-- ================= CALL ================= -->
+  <div id="callScreen" class="screen">
+    <div id="callTopbar">
+      <div class="dmTitle"><span id="callHeaderName">@캐릭터</span><span class="dot"></span></div>
+      <div class="topIcons"><span title="고정 메시지">📌</span><span title="친구 추가">➕</span><span title="검색">🔍</span></div>
+    </div>
+    <div id="callMain">
+      <div id="avatarDuo">
+        <div class="selfAvatar" id="selfAvatarEl" title="나"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></div>
+        <div id="avatarRing"><img id="avatarImg" src=""></div>
+      </div>
+      <div id="roomGrid"></div>
+      <div id="roomInviteBar">
+        <button id="inviteCharBtn">＋ 캐릭터 초대</button>
+        <button id="randomInviteBtn">🎲 랜덤으로 초대</button>
+        <button id="roomAutoTalkBtn">🔄 자동 대화</button>
+      </div>
+      <div id="inviteMenu"></div>
+      <div id="charNameCall">캐릭터</div>
+      <div id="callTimer">00:00</div>
+      <div id="callStatus">연결됨</div>
+      <div id="captionBox"></div>
+      <div id="captionTranslation"></div>
+    </div>
+    <div id="micHint">마이크 버튼을 누르고 말해보세요</div>
+    <div id="controlBar">
+      <button class="ctl" id="screenBtn" title="화면 공유 (연출용)">
+        <svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+      </button>
+      <button class="ctl" id="camBtn" title="카메라 (연출용)">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      </button>
+      <button id="hangupBtn" title="통화 종료">통화 나가기</button>
+      <button class="ctl" id="micBtn" title="마이크">
+        <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+      </button>
+      <button class="ctl" id="chatBtn" title="채팅으로 입력">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v12H5.17L4 17.17V4zm0-2a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4z"/></svg>
+      </button>
+      <button class="ctl" id="charMuteBtn" title="캐릭터 목소리 끄기">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>
+      </button>
+      <button class="ctl" id="volumeBtn" title="음량 조절">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      </button>
+      <button class="ctl" id="settingsGearBtn" title="설정 (준비 중)">⚙</button>
+    </div>
+    <div id="volumeMenu">
+      <input type="range" id="volumeSlider" min="0" max="100" value="100">
+      <div id="volumeValueLabel">100%</div>
+    </div>
+    <div id="textFallback">
+      <input type="text" id="textFallbackInput" placeholder="메시지 입력...">
+      <button id="textFallbackSend">전송</button>
+    </div>
+  </div>
+
+  <div id="onboardingModal">
+    <div id="onboardingBox">
+      <div id="onboardingIcon">💬</div>
+      <h2>캐릭터 통화 앱에 오신 걸 환영해요</h2>
+      <p id="onboardingText">
+        캐릭터가 실제로 말하고 답하려면 <b>Anthropic(Claude) 또는 Gemini API 키</b>가 필요해요.<br>
+        지금 이 화면(미리보기) 안에서 쓰신다면 키 없이도 바로 되지만,
+        이 파일을 다운로드해서 브라우저로 직접 열어 쓰실 거라면 둘 중 하나를 넣어주셔야 해요.
+      </p>
+      <div id="onboardingBtns">
+        <button id="onboardingSetupBtn">지금 키 설정하기</button>
+        <button id="onboardingLaterBtn">나중에 할게요</button>
+      </div>
+      <p id="onboardingHint">console.anthropic.com에서 무료로 발급받을 수 있어요 · 톱니바퀴(⚙)에서 언제든 다시 설정 가능</p>
+    </div>
+  </div>
+  <div id="loadingModal">
+    <div id="loadingBox">
+      <div id="loadingSpinner"></div>
+      <div id="loadingText">불러오는 중...</div>
+      <div id="loadingSubText"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  // screens
+  const homeScreen = $('home');
+  const settingsScreen = $('settings');
+  const callScreen = $('callScreen');
+  function showScreen(el) {
+    [homeScreen, settingsScreen, callScreen].forEach(s => s.classList.remove('visible'));
+    el.classList.add('visible');
+    if (el === homeScreen && typeof activeVoiceRoomName !== 'undefined' && activeVoiceRoomName) {
+      callScreen.classList.add('visible');
+    }
+  }
+
+  // settings fields
+  const imgInput = $('imgInput');
+  const avatarPreviewImg = $('avatarPreviewImg');
+  const avatarPreviewWrap = $('avatarPreviewWrap');
+  const bannerInput = $('bannerInput');
+  const bannerPreviewImg = $('bannerPreviewImg');
+  const bannerPreviewWrap = $('bannerPreviewWrap');
+  const loadVoicesBtn = $('loadVoicesBtn');
+  const voiceListStatus = $('voiceListStatus');
+  const elevenVoiceSelect = $('elevenVoiceSelect');
+  const providerClaudeBtn = $('providerClaudeBtn');
+  const providerGeminiBtn = $('providerGeminiBtn');
+  const anthropicKeySub = $('anthropicKeySub');
+  const geminiKeySub = $('geminiKeySub');
+  const geminiKeyInput = $('geminiKeyInput');
+  const goSettingsBtn = $('goSettingsBtn');
+  const langBtn = $('langBtn');
+  const langMenu = $('langMenu');
+  const myAvatarBtn = $('myAvatarBtn');
+  const myNameLabel = $('myNameLabel');
+  const myStatusLabel = $('myStatusLabel');
+  const userPanelInfo = $('userPanelInfo');
+  const profileCard = $('profileCard');
+  const profileCardClose = $('profileCardClose');
+  const profileCardAvatar = $('profileCardAvatar');
+  const profileCardAvatarFallback = $('profileCardAvatarFallback');
+  const profileCardBanner = $('profileCardBanner');
+  const profileCardName = $('profileCardName');
+  const profileCardSub = $('profileCardSub');
+  const profileCardActions = $('profileCardActions');
+  const settingsBack = $('settingsBack');
+  const saveSettingsBtn = $('saveSettingsBtn');
+  const textChannelList = $('textChannelList');
+  const voiceChannelList = $('voiceChannelList');
+  const addChannelBtn = $('addChannelBtn');
+  const roomChannelList = $('roomChannelList');
+  const addRoomBtn = $('addRoomBtn');
+  const avatarDuo = $('avatarDuo');
+  const roomGrid = $('roomGrid');
+  const chatFeed = $('chatFeed');
+  const chatInputWrap = $('chatInputWrap');
+  const chatChannelTitle = $('chatChannelTitle');
+  const chatInput = $('chatInput');
+  const memberPanel = $('memberPanel');
+  const rail = $('rail');
+  const addSrvBtn = rail.querySelector('.addSrv');
+  const mainSrvIcon = rail.querySelector('.rail-icon:not(.addSrv)');
+
+  // ---------------- mobile sidebar / member drawers ----------------
+  const channelSidebarEl = $('channelSidebar');
+  const sidebarBackdrop = $('sidebarBackdrop');
+  const mobileMenuBtn = $('mobileMenuBtn');
+  const mobileMembersBtn = $('mobileMembersBtn');
+
+  function openSidebarDrawer() {
+    channelSidebarEl.classList.add('mobileOpen');
+    memberPanel.classList.remove('mobileOpen');
+    sidebarBackdrop.classList.add('visible');
+  }
+  function openMemberDrawer() {
+    memberPanel.classList.add('mobileOpen');
+    channelSidebarEl.classList.remove('mobileOpen');
+    sidebarBackdrop.classList.add('visible');
+  }
+  function closeSidebarDrawer() {
+    channelSidebarEl.classList.remove('mobileOpen');
+    memberPanel.classList.remove('mobileOpen');
+    sidebarBackdrop.classList.remove('visible');
+  }
+  mobileMenuBtn.addEventListener('click', () => {
+    if (channelSidebarEl.classList.contains('mobileOpen')) closeSidebarDrawer();
+    else openSidebarDrawer();
+  });
+  mobileMembersBtn.addEventListener('click', () => {
+    if (memberPanel.classList.contains('mobileOpen')) closeSidebarDrawer();
+    else openMemberDrawer();
+  });
+  sidebarBackdrop.addEventListener('click', closeSidebarDrawer);
+
+  // call screen elements
+  const avatarImg = $('avatarImg');
+  const avatarRing = $('avatarRing');
+  const charNameCallEl = $('charNameCall');
+  const callHeaderName = $('callHeaderName');
+  const callStatus = $('callStatus');
+  const callTimer = $('callTimer');
+  const captionBox = $('captionBox');
+  const micBtn = $('micBtn');
+  const chatBtn = $('chatBtn');
+  const charMuteBtn = $('charMuteBtn');
+  const volumeBtn = $('volumeBtn');
+  const volumeMenu = $('volumeMenu');
+  const volumeSlider = $('volumeSlider');
+  const volumeValueLabel = $('volumeValueLabel');
+  const hangupBtn = $('hangupBtn');
+  const textFallback = $('textFallback');
+  const textFallbackInput = $('textFallbackInput');
+  const textFallbackSend = $('textFallbackSend');
+
+  // ---------------- state ----------------
+  let characters = []; // { id, avatarDataUrl, name, persona, elevenKey, elevenVoice }
+  let editingCharId = null; // null = adding new character
+  let activeCallChar = null; // character object currently in a call
+  let charIdSeq = 1;
+  let myAvatarDataUrl = '';
+  let myBannerDataUrl = '';
+  let mainRailImage = '';
+  let customServers = []; // { id, name, label, imageDataUrl }
+  let serverIdSeq = 1;
+  let myName = '나';
+  let myOnline = true;
+  let anthropicKey = '';
+  let geminiKey = '';
+  let aiProvider = 'claude'; // 'claude' | 'gemini'
+  function hasActiveKey() { return aiProvider === 'gemini' ? !!geminiKey : !!anthropicKey; }
+  function missingKeyMessage() {
+    return aiProvider === 'gemini'
+      ? 'Gemini API 키가 없어요 — 톱니바퀴(설정)에서 키를 입력해주세요'
+      : 'Anthropic API 키가 없어요 — 톱니바퀴(설정)에서 키를 입력해주세요';
+  }
+  let settingsMode = 'char'; // 'char' | 'profile'
+
+  let channels = ['일반'];
+  let channelImages = {}; // channel name -> data URL
+  let activeChannel = '일반';
+  let voiceRooms = ['음성채널'];
+  let callMode = 'dm'; // 'dm' | 'room'
+  let selectedSpeakerId = null;
+  let activeVoiceRoomName = null;
+  let mainContentMode = 'channel'; // 'channel' | 'dm' | 'friends'
+  let activeDmCharId = null;
+  let dmMessages = {}; // charId -> [{from:'user'|'char', text, time}]
+  let roomParticipantIds = [];
+  let channelMessages = { '일반': [] };
+  let channelParticipants = { '일반': [] };
+
+  let seconds = 0;
+  let timerHandle = null;
+  let history = [];
+  let recognizing = false;
+  let charVoiceMuted = false;
+  let ttsVolume = 1;
+  let currentAudioEl = null;
+  let recognition = null;
+
+  // ---------------- sound fx (synthesized, no files needed) ----------------
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function tone(freq, startOffset, duration, opts) {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    opts = opts || {};
+    const type = opts.type || 'sine';
+    const vol = opts.vol != null ? opts.vol : 0.14;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const t0 = ctx.currentTime + startOffset;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+  function sfxJoin() { tone(587, 0, 0.13); tone(880, 0.09, 0.16); }
+  function sfxLeave() { tone(740, 0, 0.12); tone(494, 0.08, 0.18); }
+  function sfxMemberJoin() { tone(660, 0, 0.11, { vol: 0.09 }); }
+  function sfxMessage() { tone(920, 0, 0.07, { vol: 0.08, type: 'triangle' }); }
+  function sfxMuteOn() { tone(320, 0, 0.07, { vol: 0.1, type: 'square' }); }
+  function sfxMuteOff() { tone(520, 0, 0.07, { vol: 0.1, type: 'square' }); }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function charDetailBlock(c) {
+    const lines = [];
+    if (c.gender) lines.push(`- 성별: ${c.gender}`);
+    if (c.callName) lines.push(`- 나(${myName})를 부를 때: "${c.callName}"라고 불러.`);
+    if (c.speechHabit) lines.push(`- 말투 특징: ${c.speechHabit}`);
+    if (c.likes) lines.push(`- 좋아하는 것: ${c.likes}`);
+    if (c.backstory) lines.push(`- 배경/나와의 관계: ${c.backstory}`);
+    return lines.length ? '\n' + lines.join('\n') : '';
+  }
+  let responseLanguage = '한국어';
+  function languageInstruction() {
+    const translateRule = '만약 방금 대답을 한국어가 아닌 다른 언어로 했다면, 답변 맨 끝에 줄바꿈하고 "[해석] "으로 시작하는 줄에 그 대답을 한국어로 간단히 번역해서 붙여줘. 한국어로 대답했다면 이 줄은 절대 넣지 마.';
+    if (responseLanguage === '한국어') {
+      return `기본은 한국어로 대화하되, 사용자가 다른 언어로 말해달라고 요청하거나 그 언어로 먼저 말을 걸면, 캐릭터의 말투와 성격을 유지한 채로 그 언어로 자연스럽게 전환해서 대답해. ${translateRule}`;
+    }
+    return `지금부터는 반드시 ${responseLanguage}로만 대답해. 캐릭터의 말투와 성격, 추임새는 그대로 유지하면서 언어만 ${responseLanguage}로 전환해서 자연스럽게 표현해. ${translateRule}`;
+  }
+  function parseReplyTranslation(raw) {
+    const marker = '[해석]';
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return { text: raw.trim(), translation: '' };
+    return {
+      text: raw.slice(0, idx).trim(),
+      translation: raw.slice(idx + marker.length).trim()
+    };
+  }
+  function containsHangul(str) {
+    return /[\uac00-\ud7a3]/.test(str);
+  }
+  async function resolveReplyTranslation(rawReply) {
+    const parsed = parseReplyTranslation(rawReply);
+    if (!parsed.translation && parsed.text && !containsHangul(parsed.text)) {
+      try {
+        const t = await callClaudeChat(
+          '너는 번역가야. 사용자가 준 문장(행동 묘사의 별표(*)는 그대로 두고)을 자연스러운 한국어로 번역해서, 번역문만 딱 출력해. 설명이나 따옴표, 다른 말은 절대 붙이지 마.',
+          parsed.text,
+          200
+        );
+        if (t && t.trim() && t.trim() !== '...') parsed.translation = t.trim();
+      } catch (e) {
+        console.error('번역 보강 실패', e);
+      }
+    }
+    return parsed;
+  }
+  function renderMyAvatar() {
+    if (myAvatarDataUrl) {
+      myAvatarBtn.style.backgroundImage = `url(${myAvatarDataUrl})`;
+      myAvatarBtn.textContent = '';
+    } else {
+      myAvatarBtn.style.backgroundImage = '';
+      myAvatarBtn.textContent = myName.slice(0, 1);
+    }
+    myNameLabel.textContent = myName;
+    myStatusLabel.textContent = myOnline ? '온라인' : '오프라인 표시 중';
+
+    const el = $('selfAvatarEl');
+    if (el) {
+      const svg = el.querySelector('svg');
+      if (myAvatarDataUrl) {
+        el.style.backgroundImage = `url(${myAvatarDataUrl})`;
+        if (svg) svg.style.display = 'none';
+      } else {
+        el.style.backgroundImage = '';
+        if (svg) svg.style.display = '';
+      }
+    }
+  }
+
+  function renderProfileCard(kind, payload) {
+    const avatarUrl = kind === 'self' ? myAvatarDataUrl : (payload.avatarDataUrl || '');
+    const bannerUrl = kind === 'self' ? myBannerDataUrl : (payload.bannerDataUrl || '');
+    const name = kind === 'self' ? myName : payload.name;
+    if (bannerUrl) {
+      profileCardBanner.style.backgroundImage = `url(${bannerUrl})`;
+      profileCardBanner.style.backgroundSize = 'cover';
+      profileCardBanner.style.backgroundPosition = 'center';
+    } else {
+      profileCardBanner.style.backgroundImage = '';
+      profileCardBanner.style.backgroundSize = '';
+      profileCardBanner.style.backgroundPosition = '';
+    }
+    if (avatarUrl) {
+      profileCardAvatar.src = avatarUrl;
+      profileCardAvatar.style.display = 'block';
+      profileCardAvatarFallback.style.display = 'none';
+    } else {
+      profileCardAvatar.style.display = 'none';
+      profileCardAvatarFallback.style.display = 'flex';
+      profileCardAvatarFallback.textContent = name.slice(0, 1);
+    }
+    profileCardName.textContent = name;
+
+    if (kind === 'self') {
+      profileCardSub.textContent = myOnline ? '온라인 · 캐릭터 통화 앱 사용 중' : '오프라인으로 표시 중';
+      profileCardActions.innerHTML = `
+        <button class="profileCardBtn" id="pcEditProfile">✎ 프로필 편집</button>
+        <div class="profileCardRow" id="pcOfflineToggle"><span>${myOnline ? '◌ 오프라인으로 표시' : '● 온라인으로 표시'}</span><span class="chev">›</span></div>
+        <div class="profileCardRow"><span>👤 계정 바꾸기</span><span class="chev">›</span></div>
+      `;
+      $('pcEditProfile').addEventListener('click', () => { closeProfileCard(); openMyProfile(); });
+      $('pcOfflineToggle').addEventListener('click', () => {
+        myOnline = !myOnline;
+        renderMyAvatar();
+        renderProfileCard('self', null);
+        renderMemberPanel();
+      });
+    } else {
+      const bio = payload.statusMessage
+        ? payload.statusMessage.slice(0, 60)
+        : (payload.persona ? payload.persona.slice(0, 80) : '아직 설정된 성격 정보가 없어요');
+      profileCardSub.textContent = bio;
+      profileCardActions.innerHTML = `
+        <button class="profileCardBtn primary" id="pcCallChar">📞 전화 걸기</button>
+        <div class="profileCardRow" id="pcDmChar"><span>💬 메시지 보내기</span><span class="chev">›</span></div>
+        <div class="profileCardRow" id="pcEditChar"><span>✎ 캐릭터 수정</span><span class="chev">›</span></div>
+      `;
+      $('pcCallChar').addEventListener('click', () => { closeProfileCard(); startCall(payload); });
+      $('pcDmChar').addEventListener('click', () => { closeProfileCard(); openDmChat(payload.id); });
+      $('pcEditChar').addEventListener('click', () => { closeProfileCard(); openEditCharacter(payload.id); });
+    }
+  }
+
+  function openProfileCard(anchorEl, kind, payload) {
+    renderProfileCard(kind, payload);
+    profileCard.classList.add('visible');
+    const rect = anchorEl.getBoundingClientRect();
+    const popupW = 260, estH = 230;
+    let left = rect.right + 8;
+    if (left + popupW > window.innerWidth - 8) left = rect.left - popupW - 8;
+    if (left < 8) left = 8;
+    let top = rect.top;
+    if (top + estH > window.innerHeight - 8) top = Math.max(8, window.innerHeight - estH - 8);
+    profileCard.style.left = left + 'px';
+    profileCard.style.top = top + 'px';
+  }
+  function closeProfileCard() {
+    profileCard.classList.remove('visible');
+  }
+
+  userPanelInfo.addEventListener('click', () => {
+    if (profileCard.classList.contains('visible')) closeProfileCard();
+    else openProfileCard(userPanelInfo, 'self', null);
+  });
+  profileCardClose.addEventListener('click', closeProfileCard);
+  document.addEventListener('click', (e) => {
+    if (!profileCard.classList.contains('visible')) return;
+    if (profileCard.contains(e.target) || userPanelInfo.contains(e.target)) return;
+    if (e.target.closest('[data-profile-char]') || e.target.closest('[data-profile-self]')) return;
+    closeProfileCard();
+  });
+
+  // ---------------- character right-click context menu ----------------
+  const charContextMenu = $('charContextMenu');
+  const loadingModal = $('loadingModal');
+  function showLoadingModal(text, subText) {
+    $('loadingText').textContent = text || '불러오는 중...';
+    $('loadingSubText').textContent = subText || '';
+    loadingModal.classList.add('visible');
+  }
+  function hideLoadingModal() {
+    loadingModal.classList.remove('visible');
+  }
+
+  function closeCharContextMenu() { charContextMenu.classList.remove('visible'); }
+
+  function openCharContextMenu(x, y, charId) {
+    const c = characters.find(ch => ch.id == charId);
+    if (!c) return;
+    charContextMenu.innerHTML = `
+      <div class="ctxMenuItem" id="ctxDm">💬 메시지 보내기</div>
+      <div class="ctxMenuItem" id="ctxCall">📞 전화 걸기</div>
+      <div class="ctxMenuItem" id="ctxEdit">✎ 캐릭터 수정</div>
+      <div class="ctxMenuSep"></div>
+      <div class="ctxMenuItem danger" id="ctxDelete">🗑 캐릭터 삭제</div>
+    `;
+    $('ctxDm').addEventListener('click', () => { closeCharContextMenu(); openDmChat(c.id); });
+    $('ctxCall').addEventListener('click', () => { closeCharContextMenu(); startCall(c); });
+    $('ctxEdit').addEventListener('click', () => { closeCharContextMenu(); openEditCharacter(c.id); });
+    $('ctxDelete').addEventListener('click', () => { closeCharContextMenu(); confirmDeleteCharacter(c.id); });
+
+    const menuW = 170, menuH = 190;
+    let left = x, top = y;
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    if (top + menuH > window.innerHeight - 8) top = window.innerHeight - menuH - 8;
+    charContextMenu.style.left = left + 'px';
+    charContextMenu.style.top = top + 'px';
+    charContextMenu.classList.add('visible');
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!charContextMenu.classList.contains('visible')) return;
+    if (charContextMenu.contains(e.target)) return;
+    closeCharContextMenu();
+  });
+  document.addEventListener('contextmenu', (e) => {
+    if (!charContextMenu.classList.contains('visible')) return;
+    if (!e.target.closest('[data-friend-row]') && !e.target.closest('[data-mem-key]') && !e.target.closest('.chItem') && !e.target.closest('.rail-icon') && !e.target.closest('.roomItem')) closeCharContextMenu();
+  });
+
+  // ---------------- channel right-click context menu (channel image) ----------------
+  const channelImageInput = $('channelImageInput');
+  let pendingChannelImageTarget = null;
+
+  function openChannelContextMenu(x, y, channelName) {
+    const isDefault = channelName === '일반';
+    charContextMenu.innerHTML = `
+      <div class="ctxMenuItem" id="ctxChImage">🖼 채널 이미지 변경</div>
+      ${channelImages[channelName] ? `<div class="ctxMenuItem" id="ctxChImageRemove">🗑 채널 이미지 제거</div>` : ''}
+      <div class="ctxMenuItem" id="ctxChRename">✎ 이름 변경</div>
+      ${!isDefault ? `<div class="ctxMenuSep"></div><div class="ctxMenuItem danger" id="ctxChDelete">🗑 채널 삭제</div>` : ''}
+    `;
+    $('ctxChImage').addEventListener('click', () => {
+      closeCharContextMenu();
+      pendingChannelImageTarget = channelName;
+      channelImageInput.value = '';
+      channelImageInput.click();
+    });
+    const removeBtn = $('ctxChImageRemove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        delete channelImages[channelName];
+        closeCharContextMenu();
+        renderChannelList();
+        if (channelName === activeChannel) renderMainContent();
+      });
+    }
+    $('ctxChRename').addEventListener('click', () => {
+      closeCharContextMenu();
+      renameChannel(channelName);
+    });
+    const deleteBtn = $('ctxChDelete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        closeCharContextMenu();
+        confirmDeleteChannel(channelName);
+      });
+    }
+
+    const menuW = 190, menuH = 170;
+    let left = x, top = y;
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    if (top + menuH > window.innerHeight - 8) top = window.innerHeight - menuH - 8;
+    charContextMenu.style.left = left + 'px';
+    charContextMenu.style.top = top + 'px';
+    charContextMenu.classList.add('visible');
+  }
+
+  function renameChannel(oldName) {
+    const name = prompt('새 채널 이름을 입력하세요', oldName);
+    if (!name || !name.trim()) return;
+    const clean = name.trim().replace(/\s+/g, '-').slice(0, 30);
+    if (!clean || clean === oldName) return;
+    if (channels.includes(clean)) { alert('이미 있는 채널 이름이에요.'); return; }
+    channels = channels.map(ch => ch === oldName ? clean : ch);
+    channelMessages[clean] = channelMessages[oldName] || [];
+    channelParticipants[clean] = channelParticipants[oldName] || [];
+    if (channelImages[oldName]) { channelImages[clean] = channelImages[oldName]; delete channelImages[oldName]; }
+    delete channelMessages[oldName];
+    delete channelParticipants[oldName];
+    if (activeChannel === oldName) activeChannel = clean;
+    if (callStartChannel === oldName) callStartChannel = clean;
+    switchChannel(activeChannel);
+  }
+
+  function confirmDeleteChannel(channelName) {
+    if (channelName === '일반') return;
+    const ok = confirm(`#${channelName} 채널을 삭제할까요?\n채팅 기록도 함께 사라져요. 되돌릴 수 없어요.`);
+    if (ok) deleteChannel(channelName);
+  }
+
+  function deleteChannel(channelName) {
+    channels = channels.filter(ch => ch !== channelName);
+    delete channelMessages[channelName];
+    delete channelParticipants[channelName];
+    delete channelImages[channelName];
+    if (activeChannel === channelName) {
+      switchChannel('일반');
+    } else {
+      renderChannelList();
+    }
+  }
+
+  function openRoomContextMenu(x, y, roomName) {
+    const isDefault = roomName === '음성채널';
+    charContextMenu.innerHTML = `
+      <div class="ctxMenuItem" id="ctxRoomRename">✎ 이름 변경</div>
+      ${!isDefault ? `<div class="ctxMenuSep"></div><div class="ctxMenuItem danger" id="ctxRoomDelete">🗑 음성 채널 삭제</div>` : ''}
+    `;
+    $('ctxRoomRename').addEventListener('click', () => {
+      closeCharContextMenu();
+      renameVoiceRoom(roomName);
+    });
+    const deleteBtn = $('ctxRoomDelete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        closeCharContextMenu();
+        confirmDeleteVoiceRoom(roomName);
+      });
+    }
+    const menuW = 190, menuH = 100;
+    let left = x, top = y;
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    if (top + menuH > window.innerHeight - 8) top = window.innerHeight - menuH - 8;
+    charContextMenu.style.left = left + 'px';
+    charContextMenu.style.top = top + 'px';
+    charContextMenu.classList.add('visible');
+  }
+
+  function renameVoiceRoom(oldName) {
+    const name = prompt('새 음성 채널 이름을 입력하세요', oldName);
+    if (!name || !name.trim()) return;
+    const clean = name.trim().slice(0, 30);
+    if (!clean || clean === oldName) return;
+    if (voiceRooms.includes(clean)) { alert('이미 있는 음성 채널 이름이에요.'); return; }
+    voiceRooms = voiceRooms.map(r => r === oldName ? clean : r);
+    if (activeVoiceRoomName === oldName) {
+      activeVoiceRoomName = clean;
+      callHeaderName.textContent = `🔊 ${clean}`;
+      voiceConnectedRoomName.textContent = `🔊 ${clean}`;
+    }
+    renderRoomList();
+  }
+
+  function confirmDeleteVoiceRoom(roomName) {
+    if (roomName === '음성채널') return;
+    if (roomName === activeVoiceRoomName) {
+      alert('지금 연결되어 있는 음성 채널이에요. 먼저 나가고 나서 삭제해주세요.');
+      return;
+    }
+    const ok = confirm(`🔊 ${roomName} 음성 채널을 삭제할까요?\n되돌릴 수 없어요.`);
+    if (ok) {
+      voiceRooms = voiceRooms.filter(r => r !== roomName);
+      renderRoomList();
+    }
+  }
+
+  channelImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !pendingChannelImageTarget) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      channelImages[pendingChannelImageTarget] = reader.result;
+      renderChannelList();
+      if (pendingChannelImageTarget === activeChannel) renderMainContent();
+      pendingChannelImageTarget = null;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function confirmDeleteCharacter(charId) {
+    const c = characters.find(ch => ch.id == charId);
+    if (!c) return;
+    const ok = confirm(`"${c.name}" 캐릭터를 삭제할까요?\n대화 기록도 함께 사라져요. 되돌릴 수 없어요.`);
+    if (ok) deleteCharacter(charId);
+  }
+
+  function deleteCharacter(charId) {
+    characters = characters.filter(c => c.id != charId);
+    delete dmMessages[charId];
+    if (activeDmCharId == charId) {
+      activeDmCharId = null;
+      openFriendsView();
+    }
+    roomParticipantIds = roomParticipantIds.filter(id => id != charId);
+    if (selectedSpeakerId == charId) {
+      selectedSpeakerId = roomParticipantIds.length ? roomParticipantIds[0] : null;
+      if (callMode === 'room') {
+        activeCallChar = selectedSpeakerId ? characters.find(c => c.id == selectedSpeakerId) : null;
+        if (activeCallChar) charNameCallEl.textContent = activeCallChar.name;
+      }
+    }
+    Object.keys(channelParticipants).forEach(ch => {
+      channelParticipants[ch] = (channelParticipants[ch] || []).filter(id => id != charId);
+    });
+
+    renderChannelList();
+    renderMemberPanel();
+    renderRoomList();
+    if (callMode === 'room' && chatMainCallSlot.contains(callScreen)) renderRoomGrid();
+    if (mainContentMode === 'friends') renderFriendsView();
+    if (mainContentMode === 'channel') renderChatParticipants();
+  }
+
+  function nowTime() {
+    const d = new Date();
+    let h = d.getHours(), m = String(d.getMinutes()).padStart(2,'0');
+    const ap = h >= 12 ? '오후' : '오전';
+    h = h % 12; if (h === 0) h = 12;
+    return `${ap} ${h}:${m}`;
+  }
+
+  // ---------------- channel sidebar render ----------------
+  function renderChannelList() {
+    textChannelList.innerHTML = channels.map(ch => `
+      <div class="chItem ${ch === activeChannel ? 'active' : ''}" data-ch="${escapeHtml(ch)}">
+        ${channelImages[ch] ? `<img class="chIcon" src="${channelImages[ch]}">` : `<span class="hash">#</span>`}<span>${escapeHtml(ch)}</span>
+      </div>`).join('');
+    textChannelList.querySelectorAll('.chItem').forEach(el => {
+      el.addEventListener('click', () => switchChannel(el.dataset.ch));
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openChannelContextMenu(e.clientX, e.clientY, el.dataset.ch);
+      });
+    });
+
+    const rows = characters.map(c => `
+      <div class="vcItem" data-id="${c.id}">
+        <img class="vcAvatar" src="${c.avatarDataUrl || ''}" data-profile-char="${c.id}" style="cursor:pointer;">
+        <span class="vcName" data-profile-char="${c.id}">${escapeHtml(c.name)}</span>
+        <span class="vcCallIcon" data-dm="${c.id}" title="메시지 보내기" style="color:var(--text-dim);">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16v12H5.17L4 17.17V4zm0-2a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4z"/></svg>
+        </span>
+        <span class="vcCallIcon" data-call="${c.id}" title="전화 걸기"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.7 3.9 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1.1.5 1.1 1.1v3.5c0 .6-.5 1.1-1.1 1.1C10.6 21.5 2.5 13.4 2.5 3.3c0-.6.5-1.1 1.1-1.1H7.1c.6 0 1.1.5 1.1 1.1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg></span>
+      </div>`).join('');
+    const addRow = `<div class="vcEmpty">＋ <a id="vcAddLink">캐릭터 추가하기</a></div>`;
+    voiceChannelList.innerHTML = rows + addRow;
+
+    $('sidebarFriendsNav').classList.toggle('roomItemActive', mainContentMode === 'friends');
+    voiceChannelList.querySelectorAll('[data-call]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = characters.find(x => x.id == el.dataset.call);
+        if (c) startCall(c);
+      });
+    });
+    voiceChannelList.querySelectorAll('[data-dm]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = characters.find(x => x.id == el.dataset.dm);
+        if (c) openDmChat(c.id);
+      });
+    });
+    voiceChannelList.querySelectorAll('[data-profile-char]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = characters.find(x => x.id == el.dataset.profileChar);
+        if (c) openProfileCard(el, 'char', c);
+      });
+    });
+    const addLink = $('vcAddLink');
+    if (addLink) addLink.addEventListener('click', openAddCharacter);
+  }
+
+  function openAddCharacter() {
+    settingsMode = 'char';
+    editingCharId = null;
+    fillSettingsFormFromState(null);
+    showScreen(settingsScreen);
+  }
+  function openEditCharacter(id) {
+    const c = characters.find(x => x.id == id);
+    if (!c) return;
+    settingsMode = 'char';
+    editingCharId = c.id;
+    fillSettingsFormFromState(c);
+    showScreen(settingsScreen);
+  }
+  function openMyProfile() {
+    settingsMode = 'profile';
+    editingCharId = null;
+    fillSettingsFormFromState({ name: myName, avatarDataUrl: myAvatarDataUrl, bannerDataUrl: myBannerDataUrl, persona: '', elevenKey: '', elevenVoice: '' });
+    showScreen(settingsScreen);
+  }
+
+  function renderMemberPanel() {
+    const onlineRows = [];
+    const offlineRows = [];
+    if (myOnline) onlineRows.push(memRowHtml('self', myName, myAvatarDataUrl, true));
+    else offlineRows.push(memRowHtml('self', myName, myAvatarDataUrl, false));
+    characters.forEach(c => onlineRows.push(memRowHtml(c.id, c.name, c.avatarDataUrl, true)));
+    const offlineCount = offlineRows.length;
+    let offlineHtml = offlineRows.join('');
+    if (characters.length === 0 && offlineCount === 0) {
+      offlineHtml = `<div class="memEmpty">캐릭터를 추가하면 여기 표시돼요</div>`;
+    } else if (!offlineHtml) {
+      offlineHtml = `<div class="memEmpty">없음</div>`;
+    }
+
+    memberPanel.innerHTML = `
+      <div class="memGroupLabel">온라인 — ${onlineRows.length}</div>
+      ${onlineRows.join('') || '<div class="memEmpty">없음</div>'}
+      <div class="memGroupLabel">오프라인${offlineCount ? ` — ${offlineCount}` : ''}</div>
+      ${offlineHtml}
+    `;
+    memberPanel.querySelectorAll('[data-mem-key]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = el.dataset.memKey;
+        if (key === 'self') { openProfileCard(el, 'self', null); return; }
+        const c = characters.find(x => x.id == key);
+        if (c) openDmChat(c.id);
+      });
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const key = el.dataset.memKey;
+        if (key === 'self') { openProfileCard(el, 'self', null); return; }
+        const c = characters.find(x => x.id == key);
+        if (c) openProfileCard(el, 'char', c);
+      });
+    });
+  }
+  function memRowHtml(key, name, avatarUrl, isOnline) {
+    const avatarInner = avatarUrl
+      ? `<img src="${avatarUrl}">`
+      : `<div class="memInitial">${escapeHtml(name.slice(0,1))}</div>`;
+    return `
+      <div class="memRow ${isOnline ? '' : 'offline'}" data-mem-key="${key}" style="cursor:pointer;">
+        <div class="memAvatarWrap">
+          ${avatarInner}
+          <div class="memStatusDot ${isOnline ? 'on' : 'off'}"></div>
+        </div>
+        <div class="memName">${escapeHtml(name)}</div>
+      </div>`;
+  }
+
+  function switchChannel(ch) {
+    activeChannel = ch;
+    mainContentMode = 'channel';
+    chatChannelTitle.textContent = ch;
+    renderChannelList();
+    renderChatFeed();
+    renderChatParticipants();
+    if (activeVoiceRoomName) showChatView(); else renderMainContent();
+    closeSidebarDrawer();
+  }
+
+  addChannelBtn.addEventListener('click', () => {
+    const name = prompt('새 채널 이름을 입력하세요');
+    if (!name) return;
+    const clean = name.trim().replace(/\s+/g, '-').slice(0, 30);
+    if (!clean) return;
+    if (!channels.includes(clean)) {
+      channels.push(clean);
+      channelMessages[clean] = [];
+      channelParticipants[clean] = [];
+    }
+    switchChannel(clean);
+  });
+
+  // ---------------- direct messages (1:1 text with a character) ----------------
+  const dmFeed = $('dmFeed');
+  const dmInputWrap = $('dmInputWrap');
+  const dmInput = $('dmInput');
+  const friendsView = $('friendsView');
+  const dmCallBtn = $('dmCallBtn');
+
+  function renderMainContent() {
+    chatFeed.style.display = mainContentMode === 'channel' ? 'block' : 'none';
+    chatInputWrap.style.display = mainContentMode === 'channel' ? 'block' : 'none';
+    dmFeed.style.display = mainContentMode === 'dm' ? 'block' : 'none';
+    dmInputWrap.style.display = mainContentMode === 'dm' ? 'block' : 'none';
+    friendsView.style.display = mainContentMode === 'friends' ? 'block' : 'none';
+
+    const chImg = mainContentMode === 'channel' ? channelImages[activeChannel] : null;
+    $('chatChannelIcon').style.display = chImg ? 'inline-block' : 'none';
+    if (chImg) $('chatChannelIcon').src = chImg;
+    $('chatHashSymbol').style.display = mainContentMode === 'channel' && !chImg ? 'inline' : 'none';
+    $('chatParticipants').style.display = mainContentMode === 'channel' ? 'flex' : 'none';
+    $('chatTopbarActions').style.display = mainContentMode === 'channel' ? 'flex' : 'none';
+    dmCallBtn.style.display = mainContentMode === 'dm' ? 'inline-block' : 'none';
+    $('dmHeaderAvatar').style.display = mainContentMode === 'dm' ? 'inline-block' : 'none';
+  }
+
+  function openDmChat(charId) {
+    const c = characters.find(x => x.id == charId);
+    if (!c) return;
+    mainContentMode = 'dm';
+    activeDmCharId = charId;
+    chatChannelTitle.textContent = c.name;
+    const dmAvatarEl = $('dmHeaderAvatar');
+    dmAvatarEl.src = c.avatarDataUrl || '';
+    dmAvatarEl.onclick = () => openProfileCard(dmAvatarEl, 'char', c);
+    renderMainContent();
+    renderDmFeed();
+    renderChannelList();
+    if (activeVoiceRoomName) showChatView();
+    closeSidebarDrawer();
+  }
+  dmCallBtn.addEventListener('click', () => {
+    const c = characters.find(x => x.id == activeDmCharId);
+    if (c) startCall(c);
+  });
+
+  function renderDmFeed() {
+    const c = characters.find(x => x.id == activeDmCharId);
+    const msgs = dmMessages[activeDmCharId] || [];
+    if (!msgs.length) {
+      dmFeed.innerHTML = `<div id="chatEmptyHint">${c ? escapeHtml(c.name) : '캐릭터'} 님과의 대화 시작이에요. 메시지를 보내보세요.</div>`;
+      return;
+    }
+    dmFeed.innerHTML = msgs.map(m => {
+      if (m.from === 'user') {
+        return `
+      <div class="msgRow">
+        <div class="mAvatar self">${myAvatarDataUrl ? `<img src="${myAvatarDataUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : escapeHtml(myName.slice(0,1))}</div>
+        <div class="mBody">
+          <div class="mHead"><span class="mName">${escapeHtml(myName)}</span><span class="mTime">${m.time}</span></div>
+          <div class="mText">${escapeHtml(m.text)}</div>
+        </div>
+      </div>`;
+      }
+      return `
+      <div class="msgRow">
+        ${c && c.avatarDataUrl ? `<img class="mAvatar" src="${c.avatarDataUrl}">` : `<div class="mAvatar self">${escapeHtml((c ? c.name : '?').slice(0,1))}</div>`}
+        <div class="mBody">
+          <div class="mHead"><span class="mName">${escapeHtml(c ? c.name : '캐릭터')}</span><span class="mTime">${m.time}</span></div>
+          <div class="mText">${escapeHtml(m.text)}</div>
+          ${m.translation ? `<div class="mTranslation">💬 ${escapeHtml(m.translation)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    dmFeed.scrollTop = dmFeed.scrollHeight;
+  }
+
+  async function sendDmMessage() {
+    const v = dmInput.value.trim();
+    if (!v || !activeDmCharId) return;
+    dmInput.value = '';
+    const charId = activeDmCharId;
+    dmMessages[charId] = dmMessages[charId] || [];
+    dmMessages[charId].push({ from: 'user', text: v, time: nowTime() });
+    renderDmFeed();
+
+    const c = characters.find(x => x.id == charId);
+    if (!c) return;
+    const sys = `너는 "${c.name}"라는 이름의 캐릭터야. 성격: ${c.persona || '다정하고 편안한 친구'}.${charDetailBlock(c)}
+지금 "${myName}"와(과) 1:1 다이렉트 메시지로 대화하고 있어. 캐주얼하고 다정한 채팅 말투로 1~3문장만 짧게 답해.
+${languageInstruction()}`;
+    const context = (dmMessages[charId] || []).slice(-14).map(m => `${m.from === 'user' ? myName : c.name}: ${m.text}`).join('\n');
+    try {
+      const reply = await callClaudeChat(sys, context);
+      const parsed = await resolveReplyTranslation(reply);
+      dmMessages[charId].push({ from: 'char', text: parsed.text, translation: parsed.translation, time: nowTime() });
+      if (activeDmCharId === charId) { renderDmFeed(); sfxMessage(); }
+    } catch (err) {
+      console.error(err);
+      dmMessages[charId].push({ from: 'char', text: `(응답 오류: ${err && err.message ? err.message : '연결 실패'})`, time: nowTime() });
+      if (activeDmCharId === charId) renderDmFeed();
+    }
+  }
+  dmInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    sendDmMessage();
+  });
+  $('dmSendBtn').addEventListener('click', sendDmMessage);
+
+  // ---------------- save / load settings to file ----------------
+  const loadSettingsInput = $('loadSettingsInput');
+
+  function saveSettingsToFile() {
+    const data = {
+      appVersion: 2,
+      savedAt: new Date().toISOString(),
+      myName,
+      myAvatarDataUrl,
+      myBannerDataUrl,
+      mainRailImage,
+      customServers,
+      serverIdSeq,
+      characters,
+      channels,
+      channelImages,
+      channelParticipants,
+      channelMessages,
+      dmMessages,
+      voiceRooms
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `캐릭터통화-설정-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function triggerLoadSettings() {
+    loadSettingsInput.value = '';
+    loadSettingsInput.click();
+  }
+
+  loadSettingsInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        applyLoadedSettings(data);
+      } catch (err) {
+        console.error(err);
+        alert('설정 파일을 읽지 못했어요. 이 앱에서 저장한 JSON 파일이 맞는지 확인해주세요.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  function applyLoadedSettings(data) {
+    if (!data || !Array.isArray(data.characters)) {
+      alert('올바른 설정 파일이 아니에요.');
+      return;
+    }
+    myName = data.myName || myName;
+    myAvatarDataUrl = data.myAvatarDataUrl || '';
+    myBannerDataUrl = data.myBannerDataUrl || '';
+    characters = data.characters.map(c => ({
+      id: c.id != null ? c.id : charIdSeq++,
+      name: c.name || '캐릭터',
+      persona: c.persona || '',
+      gender: c.gender || '',
+      statusMessage: c.statusMessage || '',
+      callName: c.callName || '',
+      speechHabit: c.speechHabit || '',
+      likes: c.likes || '',
+      backstory: c.backstory || '',
+      elevenKey: c.elevenKey || '',
+      elevenVoice: c.elevenVoice || '',
+      avatarDataUrl: c.avatarDataUrl || '',
+      bannerDataUrl: c.bannerDataUrl || ''
+    }));
+    const maxId = characters.reduce((m, c) => Math.max(m, Number(c.id) || 0), 0);
+    charIdSeq = Math.max(charIdSeq, maxId + 1);
+
+    if (Array.isArray(data.channels) && data.channels.length) {
+      channels = data.channels;
+      channelParticipants = data.channelParticipants || {};
+      channelImages = data.channelImages || {};
+      channelMessages = data.channelMessages || channelMessages;
+      channels.forEach(ch => {
+        channelMessages[ch] = channelMessages[ch] || [];
+        channelParticipants[ch] = channelParticipants[ch] || [];
+      });
+      if (!channels.includes(activeChannel)) activeChannel = channels[0];
+    }
+    if (Array.isArray(data.voiceRooms) && data.voiceRooms.length) {
+      voiceRooms = data.voiceRooms;
+    }
+    dmMessages = data.dmMessages || dmMessages;
+    mainRailImage = data.mainRailImage || '';
+    customServers = Array.isArray(data.customServers) ? data.customServers : [];
+    serverIdSeq = data.serverIdSeq || (customServers.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1);
+    rebuildServerRail();
+
+    renderMyAvatar();
+    renderMemberPanel();
+    renderChannelList();
+    renderRoomList();
+    chatChannelTitle.textContent = mainContentMode === 'friends' ? '친구' : activeChannel;
+    if (mainContentMode === 'channel') { renderChatFeed(); renderMainContent(); }
+    if (mainContentMode === 'friends') renderFriendsView();
+    if (mainContentMode === 'dm' && !characters.find(c => c.id == activeDmCharId)) {
+      openFriendsView();
+    } else if (mainContentMode === 'dm') {
+      renderDmFeed();
+    }
+    setChatParticipantsIfNeeded();
+    alert(`설정을 불러왔어요 — 캐릭터 ${characters.length}명`);
+  }
+
+  function setChatParticipantsIfNeeded() {
+    if (typeof renderChatParticipants === 'function') renderChatParticipants();
+  }
+
+  // ---------------- import a character sheet (md/txt) via AI parsing ----------------
+  const importSheetInput = $('importSheetInput');
+
+  function triggerImportSheet() {
+    if (!hasActiveKey()) {
+      alert(`먼저 톱니바퀴(설정)에서 ${aiProvider === 'gemini' ? 'Gemini' : 'Anthropic'} API 키를 입력해주세요 — 시트를 자동으로 읽어들이는 데 필요해요.`);
+      return;
+    }
+    importSheetInput.value = '';
+    importSheetInput.click();
+  }
+
+  importSheetInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const text = String(reader.result || '').slice(0, 100000);
+      await runCharacterSheetImport(text);
+    };
+    reader.readAsText(file);
+  });
+
+  async function runCharacterSheetImport(sheetText) {
+    const btn = $('friendsImportSheetBtn');
+    const prevLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '읽는 중...'; }
+    showLoadingModal('캐릭터 시트를 읽는 중이에요', 'AI가 내용을 분석해서 캐릭터를 만들고 있어요 · 시트가 길면 시간이 좀 걸릴 수 있어요');
+    try {
+      const sys = `너는 캐릭터 설정 시트를 파싱해서 구조화된 JSON으로 바꿔주는 도구야.
+입력된 텍스트에는 캐릭터 한 명 또는 여러 명(10명 이상일 수도 있음)의 설정이 들어있을 수 있어 (관계성 설명이 같이 있어도 무시하고 각 캐릭터 정보만 추출해).
+텍스트에 등장하는 캐릭터를 절대 빠짐없이 전부 추출해. 캐릭터 수가 많을수록 각 항목은 더 짧고 간결하게 요약해서, 전체 출력이 너무 길어지지 않게 조절해.
+아래 스키마의 JSON 배열만 출력해. 다른 설명, 마크다운 코드펜스, 인사말 없이 순수 JSON 배열만 출력해.
+
+[
+  {
+    "name": "캐릭터 이름",
+    "gender": "성별 (명시 안 됐으면 빈 문자열)",
+    "persona": "성격을 1~2문장, 40자 내외로 압축 요약",
+    "speechHabit": "말투 특징과 대표 추임새/말버릇을 짧게, 20~40자로 요약",
+    "likes": "좋아하는 것이 명시되어 있으면 짧게 요약, 없으면 빈 문자열",
+    "backstory": "직업/신분/출신/과거사/다른 캐릭터와의 관계 등을 2~3문장, 100자 내외로 압축 요약"
+  }
+]`;
+      const reply = await callClaudeChat(sys, sheetText, 8000);
+      const parsed = extractJsonArray(reply);
+      if (!parsed || !parsed.length) {
+        alert('시트에서 캐릭터 정보를 찾지 못했어요. 파일이 너무 길거나 형식이 예상과 달라서 응답이 중간에 끊겼을 수 있어요. 콘솔(F12)에서 자세한 내용을 확인할 수 있어요.');
+        return;
+      }
+      applyParsedCharacters(parsed);
+    } catch (err) {
+      console.error(err);
+      alert(`시트를 불러오는 중 오류가 났어요: ${err && err.message ? err.message : '알 수 없는 오류'}`);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = prevLabel || '📄 시트로 만들기'; }
+      hideLoadingModal();
+    }
+  }
+
+  function extractJsonArray(text) {
+    if (!text) return null;
+    let s = text.trim();
+    s = s.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    const start = s.indexOf('[');
+    const end = s.lastIndexOf(']');
+    if (start === -1) return null;
+    const slice = end !== -1 && end > start ? s.slice(start, end + 1) : s.slice(start);
+    try {
+      return JSON.parse(slice);
+    } catch (err) {
+      // 응답이 중간에 끊겼을 가능성 — 마지막으로 완성된 객체까지만 잘라서 복구 시도
+      const lastComplete = slice.lastIndexOf('},');
+      if (lastComplete > 0) {
+        const repaired = slice.slice(0, lastComplete + 1) + ']';
+        try {
+          const result = JSON.parse(repaired);
+          console.warn('응답이 잘려서 일부 캐릭터만 복구했어요.', result.length + '명');
+          return result;
+        } catch (err2) {
+          console.error('복구 시도도 실패', err2);
+        }
+      }
+      console.error('JSON 파싱 실패', err, slice);
+      return null;
+    }
+  }
+
+  function applyParsedCharacters(list) {
+    const added = [];
+    list.forEach(item => {
+      if (!item || !item.name) return;
+      const c = {
+        id: charIdSeq++,
+        name: String(item.name).trim(),
+        gender: String(item.gender || '').trim(),
+        statusMessage: '',
+        persona: String(item.persona || '').trim(),
+        callName: '',
+        speechHabit: String(item.speechHabit || '').trim(),
+        likes: String(item.likes || '').trim(),
+        backstory: String(item.backstory || '').trim(),
+        elevenKey: '',
+        elevenVoice: '',
+        avatarDataUrl: ''
+      };
+      characters.push(c);
+      added.push(c.name);
+    });
+    renderChannelList();
+    renderMemberPanel();
+    if (mainContentMode === 'friends') renderFriendsView();
+    if (added.length) {
+      alert(`캐릭터 ${added.length}명을 추가했어요: ${added.join(', ')}\n사진은 아직 없으니, 친구 목록에서 프로필 사진만 따로 추가해주세요.`);
+    } else {
+      alert('추가된 캐릭터가 없어요.');
+    }
+  }
+
+  // ---------------- friends list ----------------
+  function openFriendsView() {
+    mainContentMode = 'friends';
+    chatChannelTitle.textContent = '친구';
+    renderMainContent();
+    renderFriendsView();
+    renderChannelList();
+    if (activeVoiceRoomName) showChatView();
+    closeSidebarDrawer();
+  }
+
+  function renderFriendsView() {
+    const header = `
+      <div id="friendsHeaderRow">
+        <div id="friendsCount">전체 친구 — ${characters.length}</div>
+        <div id="friendsHeaderBtns">
+          <button id="friendsImportSheetBtn" title="마크다운/텍스트 캐릭터 시트를 불러와 자동으로 캐릭터를 만들어요">📄 시트로 만들기</button>
+          <button id="friendsLoadBtn" title="저장해둔 설정 파일 불러오기">📥 불러오기</button>
+          <button id="friendsSaveBtn" title="지금 설정을 파일로 저장">📤 저장하기</button>
+          <button id="friendsAddBtn">＋ 캐릭터 추가</button>
+        </div>
+      </div>`;
+    if (!characters.length) {
+      friendsView.innerHTML = header + `<div id="friendsEmpty">아직 추가한 캐릭터가 없어요.<br>위 "＋ 캐릭터 추가" 버튼으로 시작하거나, 캐릭터 시트 파일이 있다면 "📄 시트로 만들기"를 눌러보세요.</div>`;
+      $('friendsAddBtn').addEventListener('click', openAddCharacter);
+      $('friendsLoadBtn').addEventListener('click', triggerLoadSettings);
+      $('friendsSaveBtn').addEventListener('click', saveSettingsToFile);
+      $('friendsImportSheetBtn').addEventListener('click', triggerImportSheet);
+      return;
+    }
+    const rows = characters.map(c => `
+      <div class="friendRowWrap">
+        <div class="friendSwipeActions">
+          <button class="swipeActionBtn" data-friend-edit="${c.id}" title="캐릭터 수정">✎</button>
+          <button class="swipeActionBtn danger" data-friend-delete="${c.id}" title="삭제">🗑</button>
+        </div>
+        <div class="friendRow" data-swipe-row>
+          <div class="friendAvatarWrap" data-friend-profile="${c.id}" style="cursor:pointer;">
+            ${c.avatarDataUrl ? `<img src="${c.avatarDataUrl}">` : `<div class="friendInitial">${escapeHtml(c.name.slice(0,1))}</div>`}
+            <div class="friendStatusDot"></div>
+          </div>
+          <div class="friendMeta" data-friend-profile="${c.id}" style="cursor:pointer;">
+            <div class="friendName">${escapeHtml(c.name)}</div>
+            <div class="friendSub">${c.statusMessage ? escapeHtml(c.statusMessage.slice(0, 60)) : '온라인'}</div>
+          </div>
+          <button class="friendActionBtn" data-friend-dm="${c.id}" title="메시지 보내기">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 4h16v12H5.17L4 17.17V4zm0-2a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4z"/></svg>
+          </button>
+          <button class="friendActionBtn" data-friend-call="${c.id}" title="전화 걸기">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6.6 10.8c1.4 2.7 3.9 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1.1.5 1.1 1.1v3.5c0 .6-.5 1.1-1.1 1.1C10.6 21.5 2.5 13.4 2.5 3.3c0-.6.5-1.1 1.1-1.1H7.1c.6 0 1.1.5 1.1 1.1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+          </button>
+          <button class="friendActionBtn" data-friend-edit="${c.id}" title="캐릭터 수정" style="font-size:14px;">✎</button>
+        </div>
+      </div>`).join('');
+    friendsView.innerHTML = header + rows;
+    $('friendsAddBtn').addEventListener('click', openAddCharacter);
+    $('friendsLoadBtn').addEventListener('click', triggerLoadSettings);
+    $('friendsSaveBtn').addEventListener('click', saveSettingsToFile);
+    $('friendsImportSheetBtn').addEventListener('click', triggerImportSheet);
+    friendsView.querySelectorAll('[data-friend-dm]').forEach(el => {
+      el.addEventListener('click', (e) => { e.stopPropagation(); openDmChat(el.dataset.friendDm); });
+    });
+    friendsView.querySelectorAll('[data-friend-call]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = characters.find(x => x.id == el.dataset.friendCall);
+        if (c) startCall(c);
+      });
+    });
+    friendsView.querySelectorAll('[data-friend-edit]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openEditCharacter(el.dataset.friendEdit);
+      });
+    });
+    friendsView.querySelectorAll('[data-friend-delete]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmDeleteCharacter(el.dataset.friendDelete);
+      });
+    });
+    friendsView.querySelectorAll('[data-friend-profile]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = characters.find(x => x.id == el.dataset.friendProfile);
+        if (c) openDmChat(c.id);
+      });
+    });
+    enableFriendRowSwipe();
+  }
+
+  // ---------------- swipe-to-reveal actions (mobile, like Discord) ----------------
+  function enableFriendRowSwipe() {
+    const ACTIONS_WIDTH = 120;
+    let openRow = null;
+
+    function closeRow(row) {
+      if (!row) return;
+      row.style.transform = 'translateX(0px)';
+      row.dataset.open = '0';
+      if (openRow === row) openRow = null;
+    }
+
+    friendsView.querySelectorAll('.friendRowWrap').forEach(wrap => {
+      const row = wrap.querySelector('[data-swipe-row]');
+      if (!row) return;
+      let startX = 0, startY = 0, baseX = 0, dragging = false, decided = false;
+
+      row.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        baseX = row.dataset.open === '1' ? -ACTIONS_WIDTH : 0;
+        dragging = false;
+        decided = false;
+      }, { passive: true });
+
+      row.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (!decided) {
+          if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+            decided = true;
+            dragging = Math.abs(dx) > Math.abs(dy);
+          } else {
+            return;
+          }
+        }
+        if (!dragging) return;
+        e.preventDefault();
+        let next = baseX + dx;
+        next = Math.max(-ACTIONS_WIDTH, Math.min(0, next));
+        row.style.transform = `translateX(${next}px)`;
+      }, { passive: false });
+
+      row.addEventListener('touchend', () => {
+        if (!dragging) return;
+        const m = /translateX\((-?\d+(?:\.\d+)?)px\)/.exec(row.style.transform || '');
+        const current = m ? parseFloat(m[1]) : 0;
+        if (current < -ACTIONS_WIDTH / 2) {
+          if (openRow && openRow !== row) closeRow(openRow);
+          row.style.transform = `translateX(${-ACTIONS_WIDTH}px)`;
+          row.dataset.open = '1';
+          openRow = row;
+        } else {
+          closeRow(row);
+        }
+      });
+
+      row.addEventListener('click', () => {
+        if (row.dataset.open === '1') closeRow(row);
+      });
+    });
+  }
+
+  // ---------------- voice channel rooms ----------------
+  function renderRoomList() {
+    roomChannelList.innerHTML = voiceRooms.map(r => {
+      const isActive = r === activeVoiceRoomName;
+      let extra = '';
+      if (isActive) {
+        const memberRows = [roomMemberRowHtml(myName, myAvatarDataUrl)]
+          .concat(characters.filter(c => roomParticipantIds.includes(c.id)).map(c => roomMemberRowHtml(c.name, c.avatarDataUrl)))
+          .join('');
+        extra = `
+          ${memberRows}
+          <div class="roomInviteLinkRow" data-invite-anchor="${escapeHtml(r)}">
+            <span>👤 음성으로 초대하기</span><span class="chev">›</span>
+          </div>`;
+      }
+      return `
+        <div class="roomItem ${isActive ? 'roomItemActive' : ''}" data-room="${escapeHtml(r)}">🔊 <span>${escapeHtml(r)}</span></div>
+        ${extra}`;
+    }).join('');
+    roomChannelList.querySelectorAll('.roomItem').forEach(el => {
+      el.addEventListener('click', () => {
+        const r = el.dataset.room;
+        if (r === activeVoiceRoomName) { showVoiceView(); return; }
+        openVoiceRoom(r);
+      });
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openRoomContextMenu(e.clientX, e.clientY, el.dataset.room);
+      });
+    });
+    roomChannelList.querySelectorAll('[data-invite-anchor]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openInviteMenuFor(el);
+      });
+    });
+  }
+
+  function roomMemberRowHtml(name, avatarUrl) {
+    const avatarInner = avatarUrl ? `<img src="${avatarUrl}">` : `<div class="rmInitial">${escapeHtml(name.slice(0,1))}</div>`;
+    return `<div class="roomMemberRow">${avatarInner}<span class="rmName">${escapeHtml(name)}</span></div>`;
+  }
+
+  addRoomBtn.addEventListener('click', () => {
+    const name = prompt('새 음성 채널 이름을 입력하세요');
+    if (!name || !name.trim()) return;
+    const clean = name.trim().slice(0, 30);
+    if (!voiceRooms.includes(clean)) voiceRooms.push(clean);
+    renderRoomList();
+  });
+
+  // ---- embedding the call screen inside chatMain for room voice ----
+  const appEl = $('app');
+  const chatMainCallSlot = $('chatMainCallSlot');
+  const voiceConnectedBar = $('voiceConnectedBar');
+  const voiceConnectedRoomName = $('voiceConnectedRoomName');
+  const voiceConnectedLeaveBtn = $('voiceConnectedLeaveBtn');
+
+  function detachCallScreenToApp() {
+    if (callScreen.parentElement !== appEl) appEl.appendChild(callScreen);
+    callScreen.classList.remove('embedded', 'visible');
+  }
+  function attachCallScreenEmbedded() {
+    chatMainCallSlot.appendChild(callScreen);
+    callScreen.classList.add('visible', 'embedded');
+  }
+  function showVoiceView() {
+    renderMainContent();
+    chatFeed.style.display = 'none';
+    chatInputWrap.style.display = 'none';
+    dmFeed.style.display = 'none';
+    dmInputWrap.style.display = 'none';
+    friendsView.style.display = 'none';
+    chatMainCallSlot.style.display = 'flex';
+  }
+  function showChatView() {
+    chatMainCallSlot.style.display = 'none';
+    renderMainContent();
+  }
+
+  voiceConnectedBar.addEventListener('click', (e) => {
+    if (e.target.closest('#voiceConnectedLeaveBtn')) return;
+    showVoiceView();
+  });
+  voiceConnectedLeaveBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hangupBtn.click();
+  });
+
+  function openVoiceRoom(roomName) {
+    callMode = 'room';
+    activeVoiceRoomName = roomName;
+    sfxJoin();
+    callHeaderName.textContent = `🔊 ${roomName}`;
+    hangupBtn.textContent = '나가기';
+    avatarDuo.style.display = 'none';
+    roomGrid.style.display = 'grid';
+    $('roomInviteBar').style.display = 'flex';
+
+    roomParticipantIds = [];
+    selectedSpeakerId = null;
+    activeCallChar = null;
+    renderRoomGrid();
+
+    attachCallScreenEmbedded();
+    showVoiceView();
+    voiceConnectedBar.style.display = 'flex';
+    voiceConnectedRoomName.textContent = `🔊 ${roomName}`;
+    renderRoomList();
+
+    callStartChannel = activeChannel;
+    logCallSystemMessage(`나 님이 🔊 ${roomName} 채널에 참가했습니다`);
+
+    history = [];
+    startTimer();
+    charNameCallEl.textContent = '나 혼자 있어요';
+    callStatus.textContent = '대기 중';
+    setCaption('캐릭터를 초대하면 대화를 시작할 수 있어요.');
+    closeSidebarDrawer();
+  }
+
+  const roomGradients = ['g1', 'g2', 'g3', 'g4', 'g5'];
+
+  function renderRoomGrid() {
+    const selfTile = `
+      <div class="roomTile g1 selected-self">
+        <div class="tileAvatarWrap">${myAvatarDataUrl ? `<img src="${myAvatarDataUrl}">` : `<div class="tileSelf">${escapeHtml(myName.slice(0,1))}</div>`}</div>
+        <div class="tileNameBadge">${escapeHtml(myName)}</div>
+      </div>`;
+    const roomChars = characters.filter(c => roomParticipantIds.includes(c.id));
+    const charTiles = roomChars.map((c, i) => `
+      <div class="roomTile ${roomGradients[(i + 1) % roomGradients.length]} ${c.id === selectedSpeakerId ? 'selected' : ''}" data-tile="${c.id}">
+        <div class="tileAvatarWrap">${c.avatarDataUrl ? `<img src="${c.avatarDataUrl}">` : `<div class="tileSelf">${escapeHtml(c.name.slice(0,1))}</div>`}</div>
+        <div class="tileNameBadge">${escapeHtml(c.name)}</div>
+      </div>`).join('');
+    roomGrid.innerHTML = selfTile + (charTiles || '<div id="roomEmptyHint">아직 아무도 없어요. 아래 버튼으로 캐릭터를 초대해보세요.</div>');
+    roomGrid.querySelectorAll('[data-tile]').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = characters.find(x => x.id == el.dataset.tile);
+        if (!c) return;
+        selectedSpeakerId = c.id;
+        activeCallChar = c;
+        charNameCallEl.textContent = c.name;
+        renderRoomGrid();
+        markSpeakingTile();
+      });
+    });
+    markSpeakingTile();
+  }
+
+  function markSpeakingTile() {
+    roomGrid.querySelectorAll('.roomTile').forEach(t => t.classList.remove('speaking'));
+    if (callMode === 'room' && activeCallChar) {
+      const tile = roomGrid.querySelector(`[data-tile="${activeCallChar.id}"]`);
+      if (tile && avatarRing.classList.contains('speaking')) tile.classList.add('speaking');
+    }
+  }
+
+  function addCharacterToRoom(c) {
+    if (roomParticipantIds.includes(c.id)) return;
+    roomParticipantIds.push(c.id);
+    sfxMemberJoin();
+    const isFirst = !selectedSpeakerId;
+    renderRoomGrid();
+    renderRoomList();
+    logCallSystemMessage(`${c.name} 님이 🔊 채널에 참가했습니다`);
+    if (isFirst) {
+      selectedSpeakerId = c.id;
+      activeCallChar = c;
+      charNameCallEl.textContent = c.name;
+      renderRoomGrid();
+      setCaption('연결되는 중...');
+      callStatus.textContent = '연결되는 중...';
+      setTimeout(() => { callStatus.textContent = '통화 중'; greet(); }, 900);
+      setupSpeechRecognition();
+    }
+  }
+
+  const inviteCharBtn = $('inviteCharBtn');
+  const randomInviteBtn = $('randomInviteBtn');
+  const inviteMenu = $('inviteMenu');
+
+  function closeInviteMenu() { inviteMenu.classList.remove('visible'); }
+
+  function openInviteMenuFor(anchorEl) {
+    const available = characters.filter(c => !roomParticipantIds.includes(c.id));
+    inviteMenu.innerHTML = available.length
+      ? available.map(c => `
+          <div class="inviteMenuItem" data-invite="${c.id}">
+            <img src="${c.avatarDataUrl || ''}">
+            <span>${escapeHtml(c.name)}</span>
+          </div>`).join('')
+      : `<div class="inviteMenuEmpty">초대할 수 있는 캐릭터가 없어요.<br>친구 목록에서 캐릭터를 먼저 추가해주세요.</div>`;
+    inviteMenu.querySelectorAll('[data-invite]').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = characters.find(x => x.id == el.dataset.invite);
+        if (c) addCharacterToRoom(c);
+        closeInviteMenu();
+      });
+    });
+    const rect = anchorEl.getBoundingClientRect();
+    inviteMenu.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+    inviteMenu.style.top = (rect.bottom + 6) + 'px';
+    inviteMenu.classList.add('visible');
+  }
+
+  inviteCharBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openInviteMenuFor(inviteCharBtn);
+  });
+
+  randomInviteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const available = characters.filter(c => !roomParticipantIds.includes(c.id));
+    if (!available.length) {
+      setCaption(characters.length ? '이미 모두 이 방에 있어요.' : '먼저 캐릭터를 추가해주세요.');
+      return;
+    }
+    const pick = available[Math.floor(Math.random() * available.length)];
+    addCharacterToRoom(pick);
+  });
+
+  const roomAutoTalkBtn = $('roomAutoTalkBtn');
+  let roomAutoTalkRunning = false;
+
+  roomAutoTalkBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (roomAutoTalkRunning) {
+      roomAutoTalkRunning = false;
+      roomAutoTalkBtn.textContent = '멈추는 중...';
+      roomAutoTalkBtn.disabled = true;
+      return;
+    }
+    if (roomParticipantIds.length < 2) {
+      setCaption('자동 대화는 캐릭터가 2명 이상 있어야 시작할 수 있어요.');
+      return;
+    }
+    roomAutoTalkRunning = true;
+    roomAutoTalkBtn.classList.add('active');
+    roomAutoTalkBtn.textContent = '⏹ 대화 멈추기';
+    callStatus.textContent = '캐릭터들이 대화 중 (무제한)';
+
+    let lastSpeakerId = null;
+    while (roomAutoTalkRunning) {
+      const participants = roomParticipantIds.map(id => characters.find(c => c.id == id)).filter(Boolean);
+      if (participants.length < 2) break;
+      const candidates = participants.filter(c => c.id !== lastSpeakerId);
+      const c = candidates[Math.floor(Math.random() * candidates.length)];
+      if (!c) continue;
+      activeCallChar = c;
+      selectedSpeakerId = c.id;
+      charNameCallEl.textContent = c.name;
+      renderRoomGrid();
+
+      const others = participants.filter(x => x.id !== c.id).map(x => x.name).join(', ');
+      const sys = `너는 "${c.name}"라는 이름의 캐릭터야. 성격: ${c.persona || '다정하고 편안한 친구'}.${charDetailBlock(c)}
+지금 사용자 없이 ${others || '다른 사람'}과 자기들끼리 음성 통화(그룹콜)로 수다를 떨고 있어. 이전 대화 흐름을 자연스럽게 이어서, 짧고 자연스러운 구어체로 1~2문장만 말해. 사용자에게 말 거는 게 아니라 다른 캐릭터한테 말하는 상황이야.
+${languageInstruction()}`;
+
+      const contextText = buildHistoryContext(c.name);
+
+      try {
+        const reply = await callClaudeChat(sys, contextText);
+        const parsed = await resolveReplyTranslation(reply);
+        history.push({ role: 'assistant', content: parsed.text, speaker: c.name });
+        setCaption(`${c.name}: ${parsed.text}`);
+        setCaptionTranslation(parsed.translation);
+        await speak(parsed.text);
+        lastSpeakerId = c.id;
+      } catch (err) {
+        console.error(err);
+        setCaption(`(연결 오류: ${err && err.message ? err.message : '알 수 없는 오류'})`);
+        break;
+      }
+      if (!roomAutoTalkRunning) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    roomAutoTalkRunning = false;
+    roomAutoTalkBtn.disabled = false;
+    roomAutoTalkBtn.classList.remove('active');
+    roomAutoTalkBtn.textContent = '🔄 자동 대화';
+    callStatus.textContent = '통화 중';
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!inviteMenu.classList.contains('visible')) return;
+    if (inviteMenu.contains(e.target) || e.target === inviteCharBtn) return;
+    closeInviteMenu();
+  });
+
+
+
+  // ---------------- chat feed ----------------
+  function renderChatFeed() {
+    const msgs = channelMessages[activeChannel] || [];
+    if (msgs.length === 0) {
+      chatFeed.innerHTML = `<div id="chatEmptyHint">#${escapeHtml(activeChannel)} 채널의 시작이에요. 메시지를 남겨보세요.</div>`;
+      return;
+    }
+    chatFeed.innerHTML = msgs.map(m => {
+      if (m.type === 'call') {
+        return `
+          <div class="msgRow">
+            <div class="mAvatar self" style="background:var(--accent-live);display:flex;align-items:center;justify-content:center;">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:white;"><path d="M6.6 10.8c1.4 2.7 3.9 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1.1.5 1.1 1.1v3.5c0 .6-.5 1.1-1.1 1.1C10.6 21.5 2.5 13.4 2.5 3.3c0-.6.5-1.1 1.1-1.1H7.1c.6 0 1.1.5 1.1 1.1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+            </div>
+            <div class="mBody">
+              <div class="mHead"><span class="mName" style="color:var(--accent-live);">${escapeHtml(m.text)}</span><span class="mTime">${m.time}</span></div>
+            </div>
+          </div>`;
+      }
+      if (m.from && m.from !== 'user') {
+        const c = characters.find(x => x.id == m.from);
+        const name = c ? c.name : '(삭제된 캐릭터)';
+        const avatarUrl = c ? c.avatarDataUrl : '';
+        return `
+      <div class="msgRow">
+        ${avatarUrl ? `<img class="mAvatar" src="${avatarUrl}">` : `<div class="mAvatar self">${escapeHtml(name.slice(0,1))}</div>`}
+        <div class="mBody">
+          <div class="mHead"><span class="mName">${escapeHtml(name)}</span><span class="mTime">${m.time}</span></div>
+          <div class="mText">${escapeHtml(m.text)}</div>
+          ${m.translation ? `<div class="mTranslation">💬 ${escapeHtml(m.translation)}</div>` : ''}
+        </div>
+      </div>`;
+      }
+      return `
+      <div class="msgRow">
+        <div class="mAvatar self">나</div>
+        <div class="mBody">
+          <div class="mHead"><span class="mName">나</span><span class="mTime">${m.time}</span></div>
+          <div class="mText">${escapeHtml(m.text)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
+  function renderChatParticipants() {
+    const ids = channelParticipants[activeChannel] || [];
+    const chips = ids.map(id => {
+      const c = characters.find(x => x.id == id);
+      return c ? `<img src="${c.avatarDataUrl || ''}" title="${escapeHtml(c.name)}">` : '';
+    }).join('');
+    $('chatParticipants').innerHTML = chips;
+  }
+
+  function logCallSystemMessage(text) {
+    const ch = activeChannel;
+    channelMessages[ch] = channelMessages[ch] || [];
+    channelMessages[ch].push({ type: 'call', text, time: nowTime() });
+    if (ch === activeChannel) renderChatFeed();
+  }
+
+  const chatAddCharBtn = $('chatAddCharBtn');
+  const chatAutoTalkBtn = $('chatAutoTalkBtn');
+  const chatCharMenu = $('chatCharMenu');
+
+  function closeChatCharMenu() { chatCharMenu.classList.remove('visible'); }
+
+  chatAddCharBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    channelParticipants[activeChannel] = channelParticipants[activeChannel] || [];
+    const current = channelParticipants[activeChannel];
+    const available = characters.filter(c => !current.includes(c.id));
+    chatCharMenu.innerHTML = available.length
+      ? available.map(c => `
+          <div class="inviteMenuItem" data-addchar="${c.id}">
+            <img src="${c.avatarDataUrl || ''}">
+            <span>${escapeHtml(c.name)}</span>
+          </div>`).join('')
+      : `<div class="inviteMenuEmpty">추가할 수 있는 캐릭터가 없어요.<br>친구 목록에서 캐릭터를 먼저 추가해주세요.</div>`;
+    chatCharMenu.querySelectorAll('[data-addchar]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.addchar;
+        if (!current.includes(id)) current.push(id);
+        renderChatParticipants();
+        closeChatCharMenu();
+      });
+    });
+    const rect = chatAddCharBtn.getBoundingClientRect();
+    chatCharMenu.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+    chatCharMenu.style.top = (rect.bottom + 6) + 'px';
+    chatCharMenu.classList.add('visible');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!chatCharMenu.classList.contains('visible')) return;
+    if (chatCharMenu.contains(e.target) || e.target === chatAddCharBtn) return;
+    closeChatCharMenu();
+  });
+
+  function recentChatContext(channelName, limit) {
+    const msgs = (channelMessages[channelName] || []).filter(m => m.type !== 'call').slice(-limit);
+    return msgs.map(m => {
+      if (m.from && m.from !== 'user') {
+        const c = characters.find(x => x.id == m.from);
+        return `${c ? c.name : '캐릭터'}: ${m.text}`;
+      }
+      return `나: ${m.text}`;
+    }).join('\n');
+  }
+
+  async function callClaudeChat(systemPrompt, contextText, maxTokens) {
+    if (aiProvider === 'gemini') {
+      return callGeminiChat(systemPrompt, contextText, maxTokens);
+    }
+    if (!anthropicKey) {
+      throw new Error('Anthropic API 키가 없어요 — 톱니바퀴(설정)에서 키를 입력해주세요');
+    }
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens || 200,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: contextText || '(대화를 시작해줘)' }]
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data?.error?.message || `HTTP ${resp.status}`);
+    }
+    return (data.content || []).map(b => b.text || '').join(' ').trim() || '...';
+  }
+
+  async function callGeminiChat(systemPrompt, contextText, maxTokens) {
+    if (!geminiKey) {
+      throw new Error('Gemini API 키가 없어요 — 톱니바퀴(설정)에서 키를 입력해주세요');
+    }
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': geminiKey
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: contextText || '(대화를 시작해줘)' }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { maxOutputTokens: maxTokens || 200 }
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data?.error?.message || `HTTP ${resp.status}`);
+    }
+    const candidate = data.candidates && data.candidates[0];
+    const parts = candidate && candidate.content && candidate.content.parts;
+    const text = parts ? parts.map(p => p.text || '').join(' ').trim() : '';
+    return text || '...';
+  }
+
+  async function maybeCharacterReply(channelName, userText) {
+    const ids = channelParticipants[channelName] || [];
+    if (!ids.length) {
+      channelMessages[channelName].push({ type: 'call', text: '이 채널에 아직 캐릭터가 없어요 — 상단 "＋ 캐릭터"로 추가해보세요', time: nowTime() });
+      if (channelName === activeChannel) renderChatFeed();
+      return;
+    }
+    const speakerId = ids[Math.floor(Math.random() * ids.length)];
+    const c = characters.find(x => x.id == speakerId);
+    if (!c) return;
+    const sys = `너는 "${c.name}"라는 이름의 캐릭터야. 성격: ${c.persona || '다정하고 편안한 친구'}.${charDetailBlock(c)}
+지금 디스코드 같은 텍스트 채널에서 대화하고 있어. 캐주얼한 채팅 말투로 1~2문장만 짧게 답해.
+${languageInstruction()}`;
+    try {
+      const reply = await callClaudeChat(sys, recentChatContext(channelName, 12));
+      const parsed = await resolveReplyTranslation(reply);
+      channelMessages[channelName].push({ from: c.id, text: parsed.text, translation: parsed.translation, time: nowTime() });
+      if (channelName === activeChannel) { renderChatFeed(); sfxMessage(); }
+    } catch (err) {
+      console.error(err);
+      channelMessages[channelName].push({ type: 'call', text: `(응답 오류: ${err && err.message ? err.message : '연결 실패'})`, time: nowTime() });
+      if (channelName === activeChannel) renderChatFeed();
+    }
+  }
+
+  chatAutoTalkBtn.addEventListener('click', async () => {
+    const channelName = activeChannel;
+    const ids = channelParticipants[channelName] || [];
+    if (ids.length < 2) {
+      channelMessages[channelName] = channelMessages[channelName] || [];
+      channelMessages[channelName].push({ type: 'call', text: '자동 대화는 캐릭터가 2명 이상 있어야 시작할 수 있어요', time: nowTime() });
+      renderChatFeed();
+      return;
+    }
+    chatAutoTalkBtn.disabled = true;
+    chatAutoTalkBtn.textContent = '대화 중...';
+    let lastSpeaker = null;
+    const rounds = 4;
+    for (let i = 0; i < rounds; i++) {
+      const candidates = ids.filter(id => id !== lastSpeaker);
+      const speakerId = candidates[Math.floor(Math.random() * candidates.length)];
+      const c = characters.find(x => x.id == speakerId);
+      if (!c) continue;
+      const others = characters.filter(x => ids.includes(x.id) && x.id !== c.id).map(x => x.name).join(', ');
+      const sys = `너는 "${c.name}"라는 이름의 캐릭터야. 성격: ${c.persona || '다정하고 편안한 친구'}.${charDetailBlock(c)}
+지금 디스코드 텍스트 채널에서 ${others || '다른 사람'}과 함께 대화하고 있어. 이전 대화 흐름을 자연스럽게 이어서, 캐주얼한 채팅 말투로 1~2문장만 짧게 답해. 너무 형식적이지 않게.
+${languageInstruction()}`;
+      try {
+        const reply = await callClaudeChat(sys, recentChatContext(channelName, 12));
+        const parsed = await resolveReplyTranslation(reply);
+        channelMessages[channelName].push({ from: c.id, text: parsed.text, translation: parsed.translation, time: nowTime() });
+        if (channelName === activeChannel) { renderChatFeed(); sfxMessage(); }
+        lastSpeaker = speakerId;
+      } catch (err) {
+        console.error(err);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 600));
+    }
+    chatAutoTalkBtn.disabled = false;
+    chatAutoTalkBtn.textContent = '🔄 자동 대화';
+  });
+
+  function sendChatMessage() {
+    const v = chatInput.value.trim();
+    if (!v) return;
+    chatInput.value = '';
+    const channelName = activeChannel;
+    channelMessages[channelName] = channelMessages[channelName] || [];
+    channelMessages[channelName].push({ from: 'user', text: v, time: nowTime() });
+    renderChatFeed();
+    maybeCharacterReply(channelName, v);
+  }
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    sendChatMessage();
+  });
+  $('chatSendBtn').addEventListener('click', sendChatMessage);
+
+  // ---------------- settings ----------------
+  goSettingsBtn.addEventListener('click', openMyProfile);
+
+  // ---------------- response language picker ----------------
+  const LANG_OPTIONS = [
+    { value: '한국어', label: '한국어' },
+    { value: '영어', label: '영어 (English)' },
+    { value: '일본어', label: '일본어 (日本語)' },
+    { value: '중국어', label: '중국어 (中文)' },
+    { value: '스페인어', label: '스페인어 (Español)' },
+    { value: '프랑스어', label: '프랑스어 (Français)' }
+  ];
+
+  function closeLangMenu() { langMenu.classList.remove('visible'); }
+
+  function setResponseLanguage(lang) {
+    responseLanguage = lang;
+    const opt = LANG_OPTIONS.find(o => o.value === lang);
+    langBtn.title = `캐릭터 응답 언어: ${opt ? opt.label : lang}`;
+    langBtn.classList.toggle('active', lang !== '한국어');
+    closeLangMenu();
+  }
+
+  langBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (langMenu.classList.contains('visible')) { closeLangMenu(); return; }
+    langMenu.innerHTML = `<div class="langMenuLabel">캐릭터 응답 언어</div>` +
+      LANG_OPTIONS.map(o => `
+        <div class="langMenuItem ${o.value === responseLanguage ? 'selected' : ''}" data-lang="${escapeHtml(o.value)}">
+          <span>${escapeHtml(o.label)}</span>${o.value === responseLanguage ? '<span>✓</span>' : ''}
+        </div>`).join('');
+    langMenu.querySelectorAll('[data-lang]').forEach(el => {
+      el.addEventListener('click', () => setResponseLanguage(el.dataset.lang));
+    });
+    const rect = langBtn.getBoundingClientRect();
+    const menuH = 260;
+    langMenu.style.left = rect.left + 'px';
+    langMenu.style.top = Math.max(8, rect.top - menuH) + 'px';
+    langMenu.classList.add('visible');
+  });
+  document.addEventListener('click', (e) => {
+    if (!langMenu.classList.contains('visible')) return;
+    if (langMenu.contains(e.target) || e.target === langBtn) return;
+    closeLangMenu();
+  });
+
+  settingsBack.addEventListener('click', () => { editingCharId = null; showScreen(homeScreen); });
+
+  let pendingAvatarDataUrl = '';
+  let pendingBannerDataUrl = '';
+
+  function fillSettingsFormFromState(c) {
+    const isProfile = settingsMode === 'profile';
+    pendingAvatarDataUrl = c ? (c.avatarDataUrl || '') : '';
+    pendingBannerDataUrl = c ? (c.bannerDataUrl || '') : '';
+    $('charNameInput').value = c ? c.name : '';
+    $('personaInput').value = c ? c.persona : '다정하고 장난기 있는 여행 동료. 반말로, 짧고 자연스럽게 대화함.';
+    $('elevenKeyInput').value = c ? c.elevenKey : '';
+    $('elevenVoiceInput').value = c ? c.elevenVoice : '';
+    $('callNameInput').value = c ? (c.callName || '') : '';
+    $('genderInput').value = c ? (c.gender || '') : '';
+    $('statusMsgInput').value = c ? (c.statusMessage || '') : '';
+    $('speechHabitInput').value = c ? (c.speechHabit || '') : '';
+    $('likesInput').value = c ? (c.likes || '') : '';
+    $('backstoryInput').value = c ? (c.backstory || '') : '';
+    elevenVoiceSelect.style.display = 'none';
+    elevenVoiceSelect.innerHTML = '';
+    voiceListStatus.textContent = '';
+
+    $('settingsTitle').textContent = isProfile ? '내 프로필 수정' : (editingCharId ? '캐릭터 수정' : '캐릭터 추가');
+    $('settingsSub').textContent = isProfile
+      ? '내 사진과 표시 이름을 바꿀 수 있어요'
+      : '자세히 채울수록 캐릭터가 더 그럴듯하게 대화해요';
+    $('imgFieldLabel').textContent = isProfile ? '내 사진' : '캐릭터 이미지';
+    $('bannerFieldLabel').textContent = isProfile ? '내 배너 이미지 (선택)' : '캐릭터 배너 이미지 (선택)';
+    $('nameFieldLabel').textContent = isProfile ? '표시 이름' : '캐릭터 이름';
+    $('charNameInput').placeholder = isProfile ? '예: 치즈' : '예: 리안';
+
+    $('personaField').style.display = isProfile ? 'none' : 'block';
+    document.querySelectorAll('.charExtraField').forEach(el => { el.style.display = isProfile ? 'none' : 'block'; });
+    $('elevenKeyField').style.display = isProfile ? 'none' : 'block';
+    $('elevenVoiceField').style.display = isProfile ? 'none' : 'block';
+    $('anthropicKeyField').style.display = isProfile ? 'block' : 'none';
+    if (isProfile) {
+      $('anthropicKeyInput').value = anthropicKey;
+      $('geminiKeyInput').value = geminiKey;
+      pendingAiProvider = aiProvider;
+      updateAiProviderUI();
+    }
+
+    saveSettingsBtn.textContent = isProfile ? '저장하기' : (editingCharId ? '저장하기' : '추가하고 나가기');
+    if (pendingAvatarDataUrl) {
+      avatarPreviewImg.src = pendingAvatarDataUrl;
+      avatarPreviewImg.style.display = 'block';
+      avatarPreviewWrap.querySelector('span').style.display = 'none';
+    } else {
+      avatarPreviewImg.style.display = 'none';
+      avatarPreviewWrap.querySelector('span').style.display = 'block';
+    }
+    if (pendingBannerDataUrl) {
+      bannerPreviewImg.src = pendingBannerDataUrl;
+      bannerPreviewImg.style.display = 'block';
+      bannerPreviewWrap.style.display = 'block';
+    } else {
+      bannerPreviewImg.style.display = 'none';
+      bannerPreviewWrap.style.display = 'block';
+    }
+  }
+
+  imgInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingAvatarDataUrl = reader.result;
+      avatarPreviewImg.src = pendingAvatarDataUrl;
+      avatarPreviewImg.style.display = 'block';
+      avatarPreviewWrap.querySelector('span').style.display = 'none';
+    };
+    reader.readAsDataURL(f);
+  });
+
+  bannerInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingBannerDataUrl = reader.result;
+      bannerPreviewImg.src = pendingBannerDataUrl;
+      bannerPreviewImg.style.display = 'block';
+      bannerPreviewWrap.style.display = 'block';
+    };
+    reader.readAsDataURL(f);
+  });
+
+  let pendingAiProvider = 'claude';
+  function updateAiProviderUI() {
+    const isGemini = pendingAiProvider === 'gemini';
+    providerClaudeBtn.classList.toggle('selected', !isGemini);
+    providerGeminiBtn.classList.toggle('selected', isGemini);
+    anthropicKeySub.style.display = isGemini ? 'none' : 'block';
+    geminiKeySub.style.display = isGemini ? 'block' : 'none';
+  }
+  providerClaudeBtn.addEventListener('click', () => { pendingAiProvider = 'claude'; updateAiProviderUI(); });
+  providerGeminiBtn.addEventListener('click', () => { pendingAiProvider = 'gemini'; updateAiProviderUI(); });
+
+  loadVoicesBtn.addEventListener('click', async () => {
+    const key = $('elevenKeyInput').value.trim();
+    if (!key) {
+      voiceListStatus.textContent = '먼저 위에 API 키를 입력해주세요';
+      return;
+    }
+    loadVoicesBtn.disabled = true;
+    voiceListStatus.textContent = '불러오는 중...';
+    try {
+      const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': key }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const voices = data.voices || [];
+      if (!voices.length) {
+        voiceListStatus.textContent = '목소리를 찾지 못했어요';
+        elevenVoiceSelect.style.display = 'none';
+        return;
+      }
+      const currentVoiceId = $('elevenVoiceInput').value.trim();
+      elevenVoiceSelect.innerHTML = `<option value="">— 목소리를 선택하세요 —</option>` +
+        voices.map(v => `<option value="${v.voice_id}" ${v.voice_id === currentVoiceId ? 'selected' : ''}>${escapeHtml(v.name)}${v.labels && v.labels.accent ? ` (${escapeHtml(v.labels.accent)})` : ''}</option>`).join('');
+      elevenVoiceSelect.style.display = 'block';
+      voiceListStatus.textContent = `${voices.length}개 불러왔어요 — 아래에서 선택하세요`;
+    } catch (err) {
+      console.error(err);
+      voiceListStatus.textContent = '불러오지 못했어요 — 키를 확인해주세요';
+      elevenVoiceSelect.style.display = 'none';
+    } finally {
+      loadVoicesBtn.disabled = false;
+    }
+  });
+
+  elevenVoiceSelect.addEventListener('change', () => {
+    if (elevenVoiceSelect.value) {
+      $('elevenVoiceInput').value = elevenVoiceSelect.value;
+    }
+  });
+
+  saveSettingsBtn.addEventListener('click', () => {
+    if (settingsMode === 'profile') {
+      myName = $('charNameInput').value.trim() || '나';
+      myAvatarDataUrl = pendingAvatarDataUrl;
+      myBannerDataUrl = pendingBannerDataUrl;
+      anthropicKey = $('anthropicKeyInput').value.trim();
+      geminiKey = $('geminiKeyInput').value.trim();
+      aiProvider = pendingAiProvider;
+      renderMyAvatar();
+      renderMemberPanel();
+      renderRoomGrid();
+      showScreen(homeScreen);
+      return;
+    }
+    const data = {
+      name: $('charNameInput').value.trim() || '캐릭터',
+      persona: $('personaInput').value.trim(),
+      callName: $('callNameInput').value.trim(),
+      gender: $('genderInput').value.trim(),
+      statusMessage: $('statusMsgInput').value.trim(),
+      speechHabit: $('speechHabitInput').value.trim(),
+      likes: $('likesInput').value.trim(),
+      backstory: $('backstoryInput').value.trim(),
+      elevenKey: $('elevenKeyInput').value.trim(),
+      elevenVoice: $('elevenVoiceInput').value.trim(),
+      avatarDataUrl: pendingAvatarDataUrl,
+      bannerDataUrl: pendingBannerDataUrl
+    };
+    if (editingCharId) {
+      const c = characters.find(x => x.id == editingCharId);
+      if (c) Object.assign(c, data);
+    } else {
+      characters.push(Object.assign({ id: charIdSeq++ }, data));
+    }
+    editingCharId = null;
+    renderChannelList();
+    renderMemberPanel();
+    renderRoomList();
+    if (callMode === 'room') renderRoomGrid();
+    if (mainContentMode === 'friends') renderFriendsView();
+    if (mainContentMode === 'channel') renderChatParticipants();
+    if (mainContentMode === 'dm' && activeDmCharId) {
+      const dmChar = characters.find(x => x.id == activeDmCharId);
+      if (dmChar) {
+        chatChannelTitle.textContent = dmChar.name;
+        $('dmHeaderAvatar').src = dmChar.avatarDataUrl || '';
+      }
+      renderDmFeed();
+    }
+    showScreen(homeScreen);
+  });
+
+  // ---------------- server rail (+) ----------------
+  function setActiveRailIcon(el) {
+    rail.querySelectorAll('.rail-icon').forEach(i => i.classList.remove('active'));
+    rail.querySelectorAll('.rail-icon-wrap').forEach(w => w.classList.remove('railActive'));
+    el.classList.add('active');
+    const wrap = el.closest('.rail-icon-wrap');
+    if (wrap) wrap.classList.add('railActive');
+  }
+  mainSrvIcon.addEventListener('click', () => { setActiveRailIcon(mainSrvIcon); openFriendsView(); });
+  $('sidebarFriendsNav').addEventListener('click', () => {
+    setActiveRailIcon(mainSrvIcon);
+    openFriendsView();
+    closeSidebarDrawer();
+  });
+  mainSrvIcon.dataset.originalContent = mainSrvIcon.dataset.originalContent || mainSrvIcon.textContent;
+  mainSrvIcon.dataset.serverId = 'main';
+  wireServerIconContextMenu(mainSrvIcon);
+
+  function createServerIconElement(entry) {
+    const wrap = document.createElement('div');
+    wrap.className = 'rail-icon-wrap';
+    const icon = document.createElement('div');
+    icon.className = 'rail-icon';
+    icon.dataset.serverId = entry.id;
+    icon.dataset.originalContent = entry.label;
+    icon.style.fontSize = '15px';
+    icon.style.fontWeight = '700';
+    if (entry.imageDataUrl) {
+      icon.innerHTML = `<img src="${entry.imageDataUrl}">`;
+    } else {
+      icon.textContent = entry.label;
+    }
+    const tip = document.createElement('div');
+    tip.className = 'rail-tooltip';
+    tip.textContent = entry.name;
+    wrap.appendChild(icon);
+    wrap.appendChild(tip);
+    icon.addEventListener('click', () => setActiveRailIcon(icon));
+    wireServerIconContextMenu(icon);
+    return wrap;
+  }
+
+  addSrvBtn.addEventListener('click', () => {
+    const name = prompt('새 서버 이름을 입력하세요 (아이콘에 첫 글자가 표시돼요)');
+    if (!name || !name.trim()) return;
+    const entry = { id: serverIdSeq++, name: name.trim(), label: name.trim().slice(0, 2), imageDataUrl: '' };
+    customServers.push(entry);
+    const wrap = createServerIconElement(entry);
+    const addWrap = addSrvBtn.closest('.rail-icon-wrap');
+    rail.insertBefore(wrap, addWrap);
+    setActiveRailIcon(wrap.querySelector('.rail-icon'));
+  });
+
+  function rebuildServerRail() {
+    rail.querySelectorAll('.rail-icon-wrap').forEach(w => {
+      const ic = w.querySelector('.rail-icon');
+      if (ic && ic !== mainSrvIcon && !ic.classList.contains('addSrv')) w.remove();
+    });
+    if (mainRailImage) {
+      mainSrvIcon.innerHTML = `<img src="${mainRailImage}">`;
+    } else {
+      mainSrvIcon.innerHTML = '';
+      mainSrvIcon.textContent = mainSrvIcon.dataset.originalContent || '💬';
+    }
+    const addWrap = addSrvBtn.closest('.rail-icon-wrap');
+    customServers.forEach(entry => {
+      rail.insertBefore(createServerIconElement(entry), addWrap);
+    });
+  }
+
+  // ---------------- server image (right-click) ----------------
+  const serverImageInput = $('serverImageInput');
+  let pendingServerIconTarget = null;
+
+  function wireServerIconContextMenu(iconEl) {
+    iconEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openServerContextMenu(e.clientX, e.clientY, iconEl);
+    });
+  }
+
+  function openServerContextMenu(x, y, iconEl) {
+    const hasCustomImage = !!iconEl.querySelector('img');
+    charContextMenu.innerHTML = `
+      <div class="ctxMenuItem" id="ctxSrvImage">🖼 서버 이미지 변경</div>
+      ${hasCustomImage ? `<div class="ctxMenuItem" id="ctxSrvImageRemove">🗑 이미지 제거</div>` : ''}
+    `;
+    $('ctxSrvImage').addEventListener('click', () => {
+      closeCharContextMenu();
+      pendingServerIconTarget = iconEl;
+      serverImageInput.value = '';
+      serverImageInput.click();
+    });
+    const removeBtn = $('ctxSrvImageRemove');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        const sid = iconEl.dataset.serverId;
+        if (sid === 'main') mainRailImage = '';
+        else { const entry = customServers.find(s => s.id == sid); if (entry) entry.imageDataUrl = ''; }
+        iconEl.innerHTML = '';
+        iconEl.textContent = iconEl.dataset.originalContent || '';
+        closeCharContextMenu();
+      });
+    }
+
+    const menuW = 190, menuH = 100;
+    let left = x, top = y;
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    if (top + menuH > window.innerHeight - 8) top = window.innerHeight - menuH - 8;
+    charContextMenu.style.left = left + 'px';
+    charContextMenu.style.top = top + 'px';
+    charContextMenu.classList.add('visible');
+  }
+
+  serverImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file || !pendingServerIconTarget) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const iconEl = pendingServerIconTarget;
+      const sid = iconEl.dataset.serverId;
+      if (sid === 'main') {
+        mainRailImage = dataUrl;
+      } else {
+        const entry = customServers.find(s => s.id == sid);
+        if (entry) entry.imageDataUrl = dataUrl;
+      }
+      iconEl.innerHTML = `<img src="${dataUrl}">`;
+      pendingServerIconTarget = null;
+    };
+    reader.readAsDataURL(file);
+  });
+
+
+  // ---------------- call flow ----------------
+  let callStartChannel = null;
+
+  function leaveVoiceRoomUI() {
+    detachCallScreenToApp();
+    showChatView();
+    voiceConnectedBar.style.display = 'none';
+    activeVoiceRoomName = null;
+    renderRoomList();
+  }
+
+  function startCall(c) {
+    if (activeVoiceRoomName) {
+      clearInterval(timerHandle);
+      if (recognition) { try { recognition.stop(); } catch(e){} }
+      speechSynthesis.cancel();
+      leaveVoiceRoomUI();
+    }
+    detachCallScreenToApp();
+    callMode = 'dm';
+    hangupBtn.textContent = '통화 나가기';
+    avatarDuo.style.display = 'flex';
+    roomGrid.style.display = 'none';
+    $('roomInviteBar').style.display = 'none';
+    closeInviteMenu();
+    closeSidebarDrawer();
+
+    activeCallChar = c;
+    charNameCallEl.textContent = c.name;
+    callHeaderName.textContent = `@${c.name}`;
+    avatarImg.src = c.avatarDataUrl || '';
+    showScreen(callScreen);
+    sfxJoin();
+
+    callStartChannel = activeChannel;
+    logCallSystemMessage(`나 님이 ${c.name} 님과의 통화를 시작했습니다`);
+
+    history = [];
+    startTimer();
+    setCaption('연결되는 중...');
+    callStatus.textContent = '연결되는 중...';
+    setTimeout(() => {
+      callStatus.textContent = '통화 중';
+      greet();
+    }, 900);
+
+    setupSpeechRecognition();
+  }
+
+  function startTimer() {
+    seconds = 0;
+    callTimer.textContent = '00:00';
+    timerHandle = setInterval(() => {
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      callTimer.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function setCaption(t) { captionBox.textContent = t; $('captionTranslation').textContent = ''; }
+  function setCaptionTranslation(t) { $('captionTranslation').textContent = t ? `💬 ${t}` : ''; }
+
+  hangupBtn.addEventListener('click', () => {
+    clearInterval(timerHandle);
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    speechSynthesis.cancel();
+    roomAutoTalkRunning = false;
+    setCaption('');
+    sfxLeave();
+    const duration = callTimer.textContent;
+    const prevActive = activeChannel;
+    activeChannel = callStartChannel || activeChannel;
+    if (callMode === 'room') {
+      logCallSystemMessage(`나 님이 음성 채널에서 나갔습니다 · ${duration}`);
+      activeChannel = prevActive;
+      activeCallChar = null;
+      leaveVoiceRoomUI();
+    } else {
+      logCallSystemMessage(`통화가 종료됐습니다 · ${duration}`);
+      activeChannel = prevActive;
+      activeCallChar = null;
+      showScreen(homeScreen);
+    }
+  });
+
+  chatBtn.addEventListener('click', () => {
+    textFallback.style.display = textFallback.style.display === 'flex' ? 'none' : 'flex';
+    if (textFallback.style.display === 'flex') textFallbackInput.focus();
+  });
+  charMuteBtn.addEventListener('click', () => {
+    charVoiceMuted = !charVoiceMuted;
+    if (charVoiceMuted) {
+      stopCurrentAudio();
+      avatarRing.classList.remove('speaking');
+      markSpeakingTile();
+    }
+    charMuteBtn.classList.toggle('active', charVoiceMuted);
+    charMuteBtn.title = charVoiceMuted ? '캐릭터 목소리 켜기' : '캐릭터 목소리 끄기';
+    charMuteBtn.innerHTML = charVoiceMuted
+      ? '<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>'
+      : '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>';
+  });
+
+  function updateVolumeIcon() {
+    let iconPath;
+    if (ttsVolume === 0) {
+      iconPath = 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z';
+    } else if (ttsVolume < 0.5) {
+      iconPath = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z';
+    } else {
+      iconPath = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z';
+    }
+    volumeBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="${iconPath}"/></svg>`;
+  }
+
+  function closeVolumeMenu() { volumeMenu.classList.remove('visible'); }
+
+  volumeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (volumeMenu.classList.contains('visible')) { closeVolumeMenu(); return; }
+    const rect = volumeBtn.getBoundingClientRect();
+    volumeMenu.style.left = Math.max(8, rect.left - 20) + 'px';
+    volumeMenu.style.top = (rect.top - 70) + 'px';
+    volumeMenu.classList.add('visible');
+  });
+  volumeSlider.addEventListener('input', () => {
+    ttsVolume = Number(volumeSlider.value) / 100;
+    volumeValueLabel.textContent = `${volumeSlider.value}%`;
+    updateVolumeIcon();
+    if (currentAudioEl) currentAudioEl.volume = ttsVolume;
+  });
+  document.addEventListener('click', (e) => {
+    if (!volumeMenu.classList.contains('visible')) return;
+    if (volumeMenu.contains(e.target) || e.target === volumeBtn || e.target.closest('#volumeBtn')) return;
+    closeVolumeMenu();
+  });
+  textFallbackSend.addEventListener('click', sendTextFallback);
+  textFallbackInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendTextFallback(); });
+  function sendTextFallback() {
+    const v = textFallbackInput.value.trim();
+    if (!v) return;
+    if (!activeCallChar) { setCaption('먼저 대화할 캐릭터를 선택해주세요.'); return; }
+    textFallbackInput.value = '';
+    handleUserMessage(v);
+  }
+
+  function setupSpeechRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      $('micHint').textContent = '이 브라우저는 음성인식을 지원하지 않아요 — 채팅 버튼으로 입력해주세요';
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      handleUserMessage(text);
+    };
+    recognition.onend = () => {
+      recognizing = false;
+      micBtn.classList.remove('active');
+    };
+    recognition.onerror = () => {
+      recognizing = false;
+      micBtn.classList.remove('active');
+    };
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (!activeCallChar) { setCaption('먼저 대화할 캐릭터를 선택해주세요.'); return; }
+    if (!recognition) { setCaption('음성인식을 지원하지 않는 브라우저예요. 채팅 버튼을 눌러주세요.'); return; }
+    if (recognizing) { sfxMuteOn(); recognition.stop(); return; }
+    recognizing = true;
+    micBtn.classList.add('active');
+    setCaption('듣는 중...');
+    sfxMuteOff();
+    recognition.start();
+  });
+
+  function greet() { handleAssistantTurn(true); }
+
+  async function handleUserMessage(text) {
+    setCaption(`나: ${text}`);
+    history.push({ role: 'user', content: text });
+    if (callMode === 'room' && roomParticipantIds.length > 1) {
+      await handleRoomGroupTurn();
+    } else {
+      await handleAssistantTurn(false);
+    }
+  }
+
+  function buildHistoryContext(fallbackName) {
+    return history.map(h => `${h.role === 'user' ? myName : (h.speaker || fallbackName)}: ${h.content}`).join('\n');
+  }
+
+  async function handleAssistantTurn(isGreeting) {
+    callStatus.textContent = '생각하는 중...';
+
+    if (!hasActiveKey()) {
+      callStatus.textContent = '통화 중';
+      setCaption(`(${missingKeyMessage()})`);
+      return;
+    }
+
+    try {
+      const sys = `너는 "${activeCallChar.name}"라는 이름의 캐릭터야. 성격: ${activeCallChar.persona || '다정하고 편안한 친구'}.${charDetailBlock(activeCallChar)}
+지금 사용자와 음성 통화를 하는 상황이야. 실제 통화처럼 짧고 자연스럽게, 구어체로 1~2문장만 대답해.
+너무 길게 설명하지 말고, 딱 통화에서 할 법한 말투로.${isGreeting ? ' 방금 전화를 받았으니 짧게 인사해줘.' : ''}
+${languageInstruction()}`;
+
+      const contextText = isGreeting ? '(전화를 받았다)' : buildHistoryContext(activeCallChar.name);
+
+      const reply = await callClaudeChat(sys, contextText);
+      const parsed = await resolveReplyTranslation(reply);
+
+      history.push({ role: 'assistant', content: parsed.text, speaker: activeCallChar.name });
+      callStatus.textContent = '통화 중';
+      setCaption(parsed.text);
+      setCaptionTranslation(parsed.translation);
+      await speak(parsed.text);
+    } catch (err) {
+      console.error(err);
+      callStatus.textContent = '통화 중';
+      setCaption(`(연결 오류: ${err && err.message ? err.message : '알 수 없는 오류'})`);
+    }
+  }
+
+  async function handleRoomGroupTurn() {
+    if (!hasActiveKey()) {
+      callStatus.textContent = '통화 중';
+      setCaption(`(${missingKeyMessage()})`);
+      return;
+    }
+    const participants = roomParticipantIds.map(id => characters.find(c => c.id == id)).filter(Boolean);
+    for (const c of participants) {
+      callStatus.textContent = '생각하는 중...';
+      activeCallChar = c;
+      selectedSpeakerId = c.id;
+      charNameCallEl.textContent = c.name;
+      renderRoomGrid();
+
+      const others = participants.filter(x => x.id !== c.id).map(x => x.name).join(', ');
+      const sys = `너는 "${c.name}"라는 이름의 캐릭터야. 성격: ${c.persona || '다정하고 편안한 친구'}.${charDetailBlock(c)}
+지금 사용자, 그리고 ${others || '다른 사람'}과 함께 음성 통화(그룹콜)를 하는 상황이야. 이전 대화 흐름을 자연스럽게 이어서, 실제 통화처럼 짧고 자연스럽게 구어체로 1~2문장만 대답해. 다른 사람이 방금 한 말에 반응해도 좋아.
+너무 길게 설명하지 말고, 딱 통화에서 할 법한 말투로.
+${languageInstruction()}`;
+
+      const contextText = buildHistoryContext(c.name);
+
+      try {
+        const reply = await callClaudeChat(sys, contextText);
+        const parsed = await resolveReplyTranslation(reply);
+        history.push({ role: 'assistant', content: parsed.text, speaker: c.name });
+        callStatus.textContent = '통화 중';
+        setCaption(`${c.name}: ${parsed.text}`);
+        setCaptionTranslation(parsed.translation);
+        await speak(parsed.text);
+      } catch (err) {
+        console.error(err);
+        callStatus.textContent = '통화 중';
+        setCaption(`(연결 오류: ${err && err.message ? err.message : '알 수 없는 오류'})`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+
+  async function speak(text) {
+    if (charVoiceMuted) return;
+    avatarRing.classList.add('speaking');
+    markSpeakingTile();
+    try {
+      if (activeCallChar.elevenKey && activeCallChar.elevenVoice) {
+        await speakElevenLabs(text, activeCallChar.elevenKey, activeCallChar.elevenVoice);
+      } else {
+        await speakBrowser(text);
+      }
+    } finally {
+      avatarRing.classList.remove('speaking');
+      markSpeakingTile();
+    }
+  }
+
+  let currentStopResolve = null;
+
+  function stopCurrentAudio() {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    if (currentAudioEl) {
+      try { currentAudioEl.pause(); currentAudioEl.currentTime = 0; } catch (e) {}
+      currentAudioEl = null;
+    }
+    if (currentStopResolve) {
+      const r = currentStopResolve;
+      currentStopResolve = null;
+      r();
+    }
+  }
+
+  function speakBrowser(text) {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) { resolve(); return; }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR';
+      u.volume = ttsVolume;
+      const done = () => { if (currentStopResolve === done) currentStopResolve = null; resolve(); };
+      u.onend = done;
+      u.onerror = done;
+      currentStopResolve = done;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    });
+  }
+
+  async function speakElevenLabs(text, key, voiceId) {
+    try {
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: { stability: 0.4, similarity_boost: 0.8 }
+        })
+      });
+      if (!res.ok) throw new Error('elevenlabs error');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.volume = ttsVolume;
+      currentAudioEl = audio;
+      await new Promise((resolve) => {
+        const done = () => { if (currentStopResolve === done) currentStopResolve = null; if (currentAudioEl === audio) currentAudioEl = null; resolve(); };
+        audio.onended = done;
+        audio.onerror = done;
+        currentStopResolve = done;
+        audio.play();
+      });
+    } catch (e) {
+      console.warn('ElevenLabs 실패, 브라우저 음성으로 대체', e);
+      await speakBrowser(text);
+    }
+  }
+
+  // ---------------- first-time onboarding ----------------
+  const onboardingModal = $('onboardingModal');
+  $('onboardingSetupBtn').addEventListener('click', () => {
+    onboardingModal.classList.remove('visible');
+    openMyProfile();
+  });
+  $('onboardingLaterBtn').addEventListener('click', () => {
+    onboardingModal.classList.remove('visible');
+  });
+
+  // init
+  renderChannelList();
+  renderRoomList();
+  renderChatFeed();
+  renderChatParticipants();
+  renderMemberPanel();
+  renderMyAvatar();
+  renderMainContent();
+  if (!hasActiveKey()) onboardingModal.classList.add('visible');
+})();
+</script>
+</body>
+</html>
